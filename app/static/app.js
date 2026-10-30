@@ -79,6 +79,11 @@ const I18N = {
     voiceBadgeBanner: "AI-Generated Voice Recreation • Memorial Simulation Only (Not spoken by the deceased)",
     voiceRefStatusLoaded: "✓ Reference voice loaded",
     voiceRefStatusNone: "No reference voice loaded yet.",
+    btnAmbientOn: "🌸 Petals: On",
+    btnAmbientOff: "🌸 Petals: Off",
+    lblSuggest: "Suggestions:",
+    lblPreviewTitle: "Live Altar Stage Preview",
+    lblBtnFullscreen: "Full Altar View",
   },
   es: {
     brandTitle: "Guardián de Ofrendas",
@@ -139,6 +144,11 @@ const I18N = {
     voiceBadgeBanner: "Recreación de Voz con IA • Solo Simulación Memorial (No fue hablado por la persona fallecida)",
     voiceRefStatusLoaded: "✓ Voz de referencia cargada",
     voiceRefStatusNone: "Aún no se ha cargado una voz de referencia.",
+    btnAmbientOn: "🌸 Pétalos: Sí",
+    btnAmbientOff: "🌸 Pétalos: No",
+    lblSuggest: "Sugerencias:",
+    lblPreviewTitle: "Vista Previa del Altar en Vivo",
+    lblBtnFullscreen: "Vista Completa",
   },
 };
 
@@ -229,6 +239,14 @@ const elements = {
   btnDeleteVoice: document.getElementById("btn-delete-voice"),
   voiceDurationInfo: document.getElementById("voice-duration-info"),
   voiceEngineBadge: document.getElementById("voice-engine-badge"),
+  // Hackathon UI & 3D Visualizer Additions
+  btnDemoQuick: document.getElementById("btn-demo-quick"),
+  btnAmbientToggle: document.getElementById("btn-ambient-toggle"),
+  btnFullscreenPreview: document.getElementById("btn-fullscreen-preview"),
+  btnCloseFullscreen: document.getElementById("btn-close-fullscreen"),
+  previewWrapper: document.getElementById("preview-wrapper"),
+  recordWaveCanvas: document.getElementById("record-wave-canvas"),
+  voiceSpectrumCanvas: document.getElementById("voice-spectrum-canvas"),
 };
 
 // Update UI Language
@@ -238,6 +256,19 @@ function setLanguage(lang) {
   const t = I18N[lang] || I18N.en;
 
   document.getElementById("lbl-brand-title").textContent = t.brandTitle;
+  if (elements.btnAmbientToggle) {
+    elements.btnAmbientToggle.textContent = ambientState ? t.btnAmbientOn : t.btnAmbientOff;
+  }
+  if (document.getElementById("lbl-preview-title")) {
+    document.getElementById("lbl-preview-title").textContent = t.lblPreviewTitle;
+  }
+  if (document.getElementById("lbl-btn-fullscreen")) {
+    document.getElementById("lbl-btn-fullscreen").textContent = t.lblBtnFullscreen;
+  }
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`lbl-suggest-${i}`);
+    if (el) el.textContent = t.lblSuggest;
+  }
   document.getElementById("step-1-title").textContent = t.step1Title;
   document.getElementById("step-1-sub").textContent = t.step1Sub;
   document.getElementById("step-2-title").textContent = t.step2Title;
@@ -527,6 +558,203 @@ async function handlePhotoSelected(e) {
   }
 }
 
+// Ambient 3D Petal State
+let ambientState = true;
+function toggleAmbient() {
+  if (typeof window.toggleAmbientParticles === "function") {
+    ambientState = window.toggleAmbientParticles();
+    const t = I18N[state.language];
+    if (elements.btnAmbientToggle) {
+      elements.btnAmbientToggle.textContent = ambientState ? t.btnAmbientOn : t.btnAmbientOff;
+    }
+  }
+}
+
+// Fullscreen Stage View
+function toggleFullscreenAltar(forceOpen) {
+  if (!elements.previewWrapper) return;
+  if (forceOpen === true) {
+    elements.previewWrapper.classList.add("fullscreen");
+  } else if (forceOpen === false) {
+    elements.previewWrapper.classList.remove("fullscreen");
+  } else {
+    elements.previewWrapper.classList.toggle("fullscreen");
+  }
+}
+
+// Offerings Suggestions Cloud Handler
+function initSuggestionPills() {
+  document.querySelectorAll(".suggestion-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const target = pill.getAttribute("data-target");
+      const val = pill.getAttribute("data-val");
+      if (!val) return;
+
+      if (target === "food") {
+        if (state.foods.length < 12 && !state.foods.includes(val)) {
+          state.foods.push(val);
+          renderChips(elements.chipsFoods, state.foods, state.foods, 12);
+        }
+      } else if (target === "drink") {
+        if (state.drinks.length < 6 && !state.drinks.includes(val)) {
+          state.drinks.push(val);
+          renderChips(elements.chipsDrinks, state.drinks, state.drinks, 6);
+        }
+      } else if (target === "song") {
+        if (state.songs.length < 6 && !state.songs.includes(val)) {
+          state.songs.push(val);
+          renderChips(elements.chipsSongs, state.songs, state.songs, 6);
+        }
+      } else if (target === "object") {
+        if (state.objects.length < 8 && !state.objects.includes(val)) {
+          state.objects.push(val);
+          renderChips(elements.chipsObjects, state.objects, state.objects, 8);
+        }
+      }
+    });
+  });
+}
+
+// Instant Demo Seeding & Loading ("✨ Demo Abuela Rosa")
+async function loadDemoOfrenda() {
+  try {
+    if (elements.btnDemoQuick) {
+      elements.btnDemoQuick.disabled = true;
+      elements.btnDemoQuick.textContent = "✨ Loading Demo...";
+    }
+
+    const res = await fetch("/api/demo/seed", { method: "POST" });
+    if (!res.ok) throw new Error("Failed to seed demo");
+    const data = await res.json();
+
+    await openSavedOfrenda(data.id);
+
+    if (elements.btnDemoQuick) {
+      elements.btnDemoQuick.textContent = "✓ Demo Loaded!";
+      setTimeout(() => {
+        elements.btnDemoQuick.textContent = "✨ Demo (Abuela Rosa)";
+        elements.btnDemoQuick.disabled = false;
+      }, 2500);
+    }
+  } catch (err) {
+    alert("Demo load failed: " + err.message);
+    if (elements.btnDemoQuick) {
+      elements.btnDemoQuick.textContent = "✨ Demo (Abuela Rosa)";
+      elements.btnDemoQuick.disabled = false;
+    }
+  }
+}
+
+// Audio Recording Visualizer (Web Audio API)
+let recordAudioCtx = null;
+let recordAnalyser = null;
+let recordAnimId = null;
+
+function startRecordVisualizer(stream) {
+  try {
+    const canvas = elements.recordWaveCanvas;
+    if (!canvas) return;
+    canvas.style.display = "block";
+    const ctx = canvas.getContext("2d");
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    recordAudioCtx = new AudioContextClass();
+    recordAnalyser = recordAudioCtx.createAnalyser();
+    recordAnalyser.fftSize = 64;
+    const source = recordAudioCtx.createMediaStreamSource(stream);
+    source.connect(recordAnalyser);
+
+    const bufferLength = recordAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    function draw() {
+      recordAnimId = requestAnimationFrame(draw);
+      recordAnalyser.getByteFrequencyData(dataArray);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const barWidth = (canvas.width / bufferLength) * 1.6;
+      let x = 4;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const val = dataArray[i];
+        const barHeight = Math.max(3, (val / 255) * canvas.height * 0.85);
+
+        const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
+        grad.addColorStop(0, "#f28c28");
+        grad.addColorStop(0.6, "#ffd54f");
+        grad.addColorStop(1, "#d81b60");
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth - 3, barHeight);
+        x += barWidth;
+      }
+    }
+    draw();
+  } catch (err) {
+    console.warn("Visualizer note:", err);
+  }
+}
+
+function stopRecordVisualizer() {
+  if (recordAnimId) {
+    cancelAnimationFrame(recordAnimId);
+    recordAnimId = null;
+  }
+  if (elements.recordWaveCanvas) {
+    elements.recordWaveCanvas.style.display = "none";
+  }
+  if (recordAudioCtx && recordAudioCtx.state !== "closed") {
+    recordAudioCtx.close().catch(() => {});
+  }
+}
+
+// Voice Spectrum Visualizer for Playback
+let voiceSpectrumAnimId = null;
+function startVoiceSpectrumVisualizer() {
+  const canvas = elements.voiceSpectrumCanvas;
+  if (!canvas) return;
+  canvas.style.display = "block";
+  const ctx = canvas.getContext("2d");
+  const barCount = 28;
+
+  function renderSpectrum() {
+    voiceSpectrumAnimId = requestAnimationFrame(renderSpectrum);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / barCount) * 0.8;
+    const gap = (canvas.width / barCount) * 0.2;
+    const t = Date.now() * 0.006;
+
+    for (let i = 0; i < barCount; i++) {
+      const wave = Math.sin(t + i * 0.4) * 0.5 + 0.5;
+      const wave2 = Math.cos(t * 1.5 + i * 0.3) * 0.5 + 0.5;
+      const height = Math.max(4, (wave * 0.6 + wave2 * 0.4) * canvas.height * 0.85);
+
+      const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
+      grad.addColorStop(0, "#f28c28");
+      grad.addColorStop(0.7, "#ffd54f");
+      grad.addColorStop(1, "#d81b60");
+
+      const x = i * (barWidth + gap) + gap;
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, canvas.height - height, barWidth, height);
+    }
+  }
+  renderSpectrum();
+}
+
+function stopVoiceSpectrumVisualizer() {
+  if (voiceSpectrumAnimId) {
+    cancelAnimationFrame(voiceSpectrumAnimId);
+    voiceSpectrumAnimId = null;
+  }
+  if (elements.voiceSpectrumCanvas) {
+    elements.voiceSpectrumCanvas.style.display = "none";
+  }
+}
+
 // Audio Recording via MediaRecorder
 async function startRecording() {
   elements.micGentleMsg.textContent = "";
@@ -539,6 +767,7 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     state.audioChunks = [];
     state.mediaRecorder = new MediaRecorder(stream);
+    startRecordVisualizer(stream);
 
     state.mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
@@ -548,6 +777,7 @@ async function startRecording() {
 
     state.mediaRecorder.onstop = async () => {
       stream.getTracks().forEach((track) => track.stop());
+      stopRecordVisualizer();
       await processRecordedAudio();
     };
 
@@ -574,6 +804,7 @@ function stopRecording() {
   if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
     clearInterval(state.recordInterval);
     state.mediaRecorder.stop();
+    stopRecordVisualizer();
     elements.btnStopRecord.style.display = "none";
     elements.btnRecord.style.display = "inline-flex";
     elements.recordTimer.style.display = "none";
@@ -1135,6 +1366,27 @@ function initEventListeners() {
     elements.drawerBackdrop.classList.remove("active");
     resetWizard();
   });
+
+  // Hackathon UI & 3D Interactive Features
+  if (elements.btnDemoQuick) {
+    elements.btnDemoQuick.addEventListener("click", loadDemoOfrenda);
+  }
+  if (elements.btnAmbientToggle) {
+    elements.btnAmbientToggle.addEventListener("click", toggleAmbient);
+  }
+  if (elements.btnFullscreenPreview) {
+    elements.btnFullscreenPreview.addEventListener("click", () => toggleFullscreenAltar(true));
+  }
+  if (elements.btnCloseFullscreen) {
+    elements.btnCloseFullscreen.addEventListener("click", () => toggleFullscreenAltar(false));
+  }
+  initSuggestionPills();
+
+  if (elements.voiceAudioPlayer) {
+    elements.voiceAudioPlayer.addEventListener("play", startVoiceSpectrumVisualizer);
+    elements.voiceAudioPlayer.addEventListener("pause", stopVoiceSpectrumVisualizer);
+    elements.voiceAudioPlayer.addEventListener("ended", stopVoiceSpectrumVisualizer);
+  }
 }
 
 // Initial Boot

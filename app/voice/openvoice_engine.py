@@ -52,3 +52,4 @@ class OpenVoiceEngine(VoiceSynthesisEngine):
         raw_bytes = output_path.read_bytes()
         output_path.write_bytes(stamp_wav_provenance(raw_bytes))
         return 5.0
+

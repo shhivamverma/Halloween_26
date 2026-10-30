@@ -75,3 +75,4 @@ class MockVoiceEngine(VoiceSynthesisEngine):
         output_path.write_bytes(watermarked_bytes)
 
         return duration
+

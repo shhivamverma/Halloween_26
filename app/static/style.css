@@ -34,11 +34,29 @@ body {
   flex-direction: column;
 }
 
-/* Header & Status */
+/* Ambient 3D Particle Canvas */
+.ambient-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.85;
+}
+
+/* Header & Status (Glassmorphic & Sticky) */
 .app-header {
-  background: linear-gradient(180deg, #241431 0%, #150d1e 100%);
-  border-bottom: 2px solid var(--border-color);
-  padding: 16px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(36, 20, 49, 0.88);
+  border-bottom: 1px solid rgba(242, 140, 40, 0.4);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(242, 140, 40, 0.12);
+  padding: 14px 24px;
 }
 .header-inner {
   max-width: 1000px;
@@ -49,28 +67,65 @@ body {
   flex-wrap: wrap;
   gap: 16px;
 }
+.brand-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-symbol {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 0 10px rgba(242, 140, 40, 0.6));
+  animation: float-symbol 3s ease-in-out infinite alternate;
+}
+@keyframes float-symbol {
+  0% { transform: translateY(0) rotate(-2deg); }
+  100% { transform: translateY(-4px) rotate(3deg); }
+}
 .brand-title {
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--candle-gold);
   letter-spacing: 0.5px;
+  text-shadow: 0 2px 12px rgba(255, 213, 79, 0.3);
 }
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Glowing Demo Quick-Load Button */
+.btn-demo-glow {
+  background: linear-gradient(135deg, #d81b60 0%, #f28c28 50%, #ffd54f 100%);
+  color: #120b18 !important;
+  font-weight: 700 !important;
+  border: none !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 16px rgba(242, 140, 40, 0.45);
+  animation: glow-pulse 2.8s infinite alternate;
+}
+.btn-demo-glow:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 24px rgba(242, 140, 40, 0.7), 0 0 32px rgba(216, 27, 96, 0.5);
+}
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 12px rgba(242, 140, 40, 0.35); }
+  100% { box-shadow: 0 0 24px rgba(216, 27, 96, 0.6), 0 0 36px rgba(242, 140, 40, 0.5); }
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   padding: 6px 14px;
   border-radius: 20px;
   background-color: rgba(102, 187, 106, 0.15);
   color: #a5d6a7;
-  border: 1px solid rgba(102, 187, 106, 0.3);
+  border: 1px solid rgba(102, 187, 106, 0.35);
+  backdrop-filter: blur(6px);
 }
 .status-badge.error {
   background-color: rgba(239, 83, 80, 0.15);
@@ -82,9 +137,11 @@ body {
   height: 9px;
   border-radius: 50%;
   background-color: var(--success);
+  box-shadow: 0 0 8px var(--success);
 }
 .status-badge.error .status-dot {
   background-color: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
 }
 
 /* Main Layout Container */
@@ -94,32 +151,38 @@ body {
   width: 100%;
   margin: 24px auto;
   padding: 0 16px;
+  position: relative;
+  z-index: 1;
 }
 
-/* Wizard Steps Bar */
+/* Wizard Stepper with Connected Glowing Trail */
 .wizard-progress {
   display: flex;
   justify-content: space-between;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 16px;
+  position: relative;
 }
 .progress-step {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: var(--text-muted);
   font-size: 0.95rem;
+  position: relative;
+  transition: color 0.3s ease;
 }
 .step-number {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 2px solid var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .progress-step.active {
   color: var(--candle-gold);
@@ -129,6 +192,8 @@ body {
   border-color: var(--marigold);
   background-color: var(--marigold);
   color: #120b18;
+  box-shadow: 0 0 16px rgba(242, 140, 40, 0.6);
+  transform: scale(1.1);
 }
 .progress-step.completed {
   color: var(--marigold);
@@ -136,18 +201,114 @@ body {
 .progress-step.completed .step-number {
   border-color: var(--marigold);
   color: var(--marigold);
+  box-shadow: 0 0 8px rgba(242, 140, 40, 0.3);
 }
 
-/* Panels */
+/* Glassmorphic Panels with 3D Tilt Support */
 .step-panel {
   display: none;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: rgba(30, 19, 39, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(242, 140, 40, 0.35);
   border-radius: 12px;
-  padding: 28px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  padding: 30px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(242, 140, 40, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease-out, box-shadow 0.25s ease;
 }
 .step-panel.active {
+  display: block;
+  animation: panel-enter 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes panel-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 3D Specular Tilt Highlight */
+[data-tilt] {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.tilt-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle 350px at var(--shine-x, 50%) var(--shine-y, 50%), rgba(255, 213, 79, 0.12), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+[data-tilt]:hover .tilt-shine {
+  opacity: 1;
+}
+
+/* Suggestion Pills (Offerings Quick-Add Cloud) */
+.suggestion-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.suggestion-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.suggestion-pill {
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  background: rgba(242, 140, 40, 0.12);
+  border: 1px dashed rgba(242, 140, 40, 0.45);
+  border-radius: 14px;
+  color: var(--candle-gold);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+}
+.suggestion-pill:hover {
+  background: rgba(242, 140, 40, 0.28);
+  border-color: var(--marigold);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(242, 140, 40, 0.3);
+}
+
+/* Audio Visualizer Canvas */
+.audio-visualizer-canvas {
+  width: 100%;
+  height: 60px;
+  border-radius: 6px;
+  background: rgba(18, 11, 24, 0.7);
+  border: 1px solid rgba(242, 140, 40, 0.3);
+  margin-top: 10px;
+  display: block;
+}
+
+/* Stage Mode Preview Header */
+.preview-stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.preview-stage-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--candle-gold);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
   display: block;
 }
 
@@ -328,13 +489,51 @@ textarea {
   border: 2px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
-  margin: 20px 0;
+  margin: 12px 0 20px 0;
   background-color: #0f0815;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s ease;
+}
+.preview-iframe-wrapper.fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  border-radius: 0;
+  border: none;
+  margin: 0;
+}
+.btn-close-fullscreen {
+  display: none;
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 10000;
+  background: rgba(24, 15, 33, 0.92);
+  border: 1px solid var(--marigold);
+  color: var(--candle-gold);
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+.preview-iframe-wrapper.fullscreen ~ .btn-close-fullscreen {
+  display: flex;
 }
 .preview-iframe {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+.chip {
+  animation: chip-pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes chip-pop {
+  from { transform: scale(0.75); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 /* Button Component (at least 44px tall for accessibility) */

@@ -111,3 +111,4 @@ class XTTSv2Engine(VoiceSynthesisEngine):
             return round(info.duration, 2)
         except Exception:
             return round(len(text.split()) / 2.5, 2)
+

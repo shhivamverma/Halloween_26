@@ -40,3 +40,4 @@ class VoiceSynthesisEngine(ABC):
             Duration of synthesized audio in seconds.
         """
         pass
+

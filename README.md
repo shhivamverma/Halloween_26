@@ -127,10 +127,16 @@ pytest -v -m integration
 ## ❓ Frequently Asked Questions (FAQ)
 
 **Q: Does any audio or picture ever get uploaded to the cloud?**  
-**A:** Never. Both `faster-whisper` and `llama3.2:3b` execute directly on your machine. You can turn off your Wi-Fi or turn on Airplane Mode, and the app continues to work without interruption.
+**A:** Never. `faster-whisper`, `llama3.2:3b`, and the local voice synthesis engine execute 100% directly on your local machine. You can disconnect your Wi-Fi or enable Airplane Mode, and the app continues to work without interruption.
 
-**Q: Do you use synthetic voice cloning of the deceased?**  
-**A:** No. We consider synthetic voice cloning of deceased loved ones unethical without explicit prior consent. Our app transcribes genuine family voices into written text to preserve their authentic words.
+**Q: How does local voice recreation work and what are the ethical safeguards?**  
+**A:** In Step 4, families can optionally generate an audio remembrance using local models (XTTS-v2 or OpenVoice V2). To protect dignity and prevent deception, affirmative family authorization is strictly required, reference audio and speaker profiles remain strictly local, and all generated audio is explicitly labeled and watermarked as an AI-generated reading of remembrance (never implying the deceased uttered the words).
+
+**Q: How do judges or first-time users quickly test the app?**  
+**A:** Click the **✨ Demo (Abuela Rosa)** button in the top navigation bar. It instantly seeds an authentic, fictional ofrenda with photo, offerings, transcribed memories, AI remembrance, and voice recreation in 1 click!
+
+**Q: Can I control the 3D visual effects and animations?**  
+**A:** Yes. The top navigation bar includes an **Ambient 3D Toggle** (marigold petals and candle embers). Furthermore, all animations automatically detect and honor your operating system's `prefers-reduced-motion` settings.
 
 **Q: What happens if Ollama is not installed or running?**  
 **A:** The app gracefully detects that Ollama is offline and uses a gentle, respectful fallback template to compose the remembrance from the facts you provided. The app will never crash with a 500 error.

@@ -7,11 +7,19 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <!-- Ambient 3D Petals & Embers Canvas -->
+  <canvas id="ambient-canvas" class="ambient-canvas" aria-hidden="true"></canvas>
+
   <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
-      <div class="brand-title" id="lbl-brand-title">Offline Ofrenda Keeper</div>
+      <div class="brand-wrapper">
+        <span class="brand-symbol" aria-hidden="true">💀🌼</span>
+        <div class="brand-title" id="lbl-brand-title">Offline Ofrenda Keeper</div>
+      </div>
       <div class="header-controls">
+        <button type="button" id="btn-demo-quick" class="btn btn-demo-glow" title="Instant demonstration with fictional Abuela Rosa">✨ Demo (Abuela Rosa)</button>
+        <button type="button" id="btn-ambient-toggle" class="btn btn-secondary" title="Toggle 3D Ambient Petals">🌸 Petals: On</button>
         <div id="status-badge" class="status-badge" role="status" aria-live="polite">
           <span class="status-dot"></span>
           <span id="status-text">Running locally. No internet needed</span>
@@ -45,7 +53,7 @@
     </nav>
 
     <!-- Step 1: About Them -->
-    <section class="step-panel active" id="panel-step-1" aria-labelledby="step-1-title">
+    <section class="step-panel active" id="panel-step-1" aria-labelledby="step-1-title" data-tilt data-tilt-max="2.5">
       <div class="panel-header">
         <h1 class="panel-title" id="step-1-title">Who are we honoring?</h1>
         <p class="panel-subtitle" id="step-1-sub">Begin by entering their name and dates for the altar.</p>
@@ -87,7 +95,7 @@
     </section>
 
     <!-- Step 2: Offerings -->
-    <section class="step-panel" id="panel-step-2" aria-labelledby="step-2-title">
+    <section class="step-panel" id="panel-step-2" aria-labelledby="step-2-title" data-tilt data-tilt-max="2.5">
       <div class="panel-header">
         <h1 class="panel-title" id="step-2-title">Traditional Offerings</h1>
         <p class="panel-subtitle" id="step-2-sub">Add the favorite foods, drinks, music, and keepsakes they loved.</p>
@@ -101,6 +109,14 @@
           <input type="text" id="input-food" maxlength="60" placeholder="e.g. Tamales de mole, Arroz con leche (Press Enter)">
           <button type="button" id="btn-add-food" class="btn btn-secondary">Add</button>
         </div>
+        <div class="suggestion-cloud" id="suggest-foods">
+          <span class="suggestion-label" id="lbl-suggest-1">Suggestions:</span>
+          <button type="button" class="suggestion-pill" data-target="food" data-val="Pan de muerto">+ Pan de muerto</button>
+          <button type="button" class="suggestion-pill" data-target="food" data-val="Tamales de mole">+ Tamales de mole</button>
+          <button type="button" class="suggestion-pill" data-target="food" data-val="Arroz con leche">+ Arroz con leche</button>
+          <button type="button" class="suggestion-pill" data-target="food" data-val="Mole negro">+ Mole negro</button>
+          <button type="button" class="suggestion-pill" data-target="food" data-val="Calaveritas de azúcar">+ Calaveritas</button>
+        </div>
       </div>
 
       <!-- Drinks -->
@@ -110,6 +126,13 @@
         <div class="chip-input-row">
           <input type="text" id="input-drink" maxlength="60" placeholder="e.g. Café de olla, Atole de vainilla (Press Enter)">
           <button type="button" id="btn-add-drink" class="btn btn-secondary">Add</button>
+        </div>
+        <div class="suggestion-cloud" id="suggest-drinks">
+          <span class="suggestion-label" id="lbl-suggest-2">Suggestions:</span>
+          <button type="button" class="suggestion-pill" data-target="drink" data-val="Café de olla">+ Café de olla</button>
+          <button type="button" class="suggestion-pill" data-target="drink" data-val="Atole de vainilla">+ Atole de vainilla</button>
+          <button type="button" class="suggestion-pill" data-target="drink" data-val="Tequila">+ Tequila</button>
+          <button type="button" class="suggestion-pill" data-target="drink" data-val="Agua fresca de jamaica">+ Agua de jamaica</button>
         </div>
       </div>
 
@@ -121,6 +144,13 @@
           <input type="text" id="input-song" maxlength="60" placeholder="e.g. Cielito Lindo, Amor Eterno (Press Enter)">
           <button type="button" id="btn-add-song" class="btn btn-secondary">Add</button>
         </div>
+        <div class="suggestion-cloud" id="suggest-songs">
+          <span class="suggestion-label" id="lbl-suggest-3">Suggestions:</span>
+          <button type="button" class="suggestion-pill" data-target="song" data-val="Cielito Lindo">+ Cielito Lindo</button>
+          <button type="button" class="suggestion-pill" data-target="song" data-val="Amor Eterno">+ Amor Eterno</button>
+          <button type="button" class="suggestion-pill" data-target="song" data-val="La Llorona">+ La Llorona</button>
+          <button type="button" class="suggestion-pill" data-target="song" data-val="México Lindo y Querido">+ México Lindo</button>
+        </div>
       </div>
 
       <!-- Objects -->
@@ -131,6 +161,13 @@
           <input type="text" id="input-object" maxlength="60" placeholder="e.g. Her silver rosary, Gardening gloves (Press Enter)">
           <button type="button" id="btn-add-object" class="btn btn-secondary">Add</button>
         </div>
+        <div class="suggestion-cloud" id="suggest-objects">
+          <span class="suggestion-label" id="lbl-suggest-4">Suggestions:</span>
+          <button type="button" class="suggestion-pill" data-target="object" data-val="Rosario de plata">+ Rosario de plata</button>
+          <button type="button" class="suggestion-pill" data-target="object" data-val="Agujas de tejer">+ Agujas de tejer</button>
+          <button type="button" class="suggestion-pill" data-target="object" data-val="Rebozo bordado">+ Rebozo bordado</button>
+          <button type="button" class="suggestion-pill" data-target="object" data-val="Fotografía familiar">+ Foto familiar</button>
+        </div>
       </div>
 
       <div class="wizard-footer">
@@ -140,7 +177,7 @@
     </section>
 
     <!-- Step 3: Memories & Photo -->
-    <section class="step-panel" id="panel-step-3" aria-labelledby="step-3-title">
+    <section class="step-panel" id="panel-step-3" aria-labelledby="step-3-title" data-tilt data-tilt-max="2.5">
       <div class="panel-header">
         <h1 class="panel-title" id="step-3-title">Memories, Voice & Photo</h1>
         <p class="panel-subtitle" id="step-3-sub">Upload a picture and record or write the stories you want to cherish.</p>
@@ -179,6 +216,7 @@
           <span id="record-timer" class="record-timer" style="display:none;">00:00</span>
           <span id="record-status-msg" class="field-hint"></span>
         </div>
+        <canvas id="record-wave-canvas" class="audio-visualizer-canvas" width="600" height="60" style="display:none;"></canvas>
         <div id="mic-gentle-msg" class="field-hint" style="margin-top:8px;"></div>
       </div>
 
@@ -196,7 +234,7 @@
     </section>
 
     <!-- Step 4: Create & Preview -->
-    <section class="step-panel" id="panel-step-4" aria-labelledby="step-4-title">
+    <section class="step-panel" id="panel-step-4" aria-labelledby="step-4-title" data-tilt data-tilt-max="1.5">
       <div class="panel-header">
         <h1 class="panel-title" id="step-4-title">Honoring Their Spirit</h1>
         <p class="panel-subtitle" id="step-4-sub">Generate a warm remembrance using a local AI model and view the completed altar.</p>
@@ -316,6 +354,7 @@
           </div>
           <div style="margin:10px 0;">
             <audio id="voice-audio-player" controls style="width:100%;"></audio>
+            <canvas id="voice-spectrum-canvas" class="audio-visualizer-canvas" width="600" height="46" style="display:none;"></canvas>
           </div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
             <button type="button" id="btn-download-voice" class="btn btn-secondary" style="font-size:0.85rem;">
@@ -342,10 +381,22 @@
         </button>
       </div>
 
-      <!-- Live Preview Iframe -->
-      <div class="preview-iframe-wrapper">
+      <!-- Live Preview Iframe with Stage Header -->
+      <div class="preview-stage-header">
+        <div class="preview-stage-title">
+          <span>🕯️</span> <span id="lbl-preview-title">Live Altar Stage Preview</span>
+        </div>
+        <div>
+          <button type="button" id="btn-fullscreen-preview" class="btn btn-secondary" style="font-size:0.88rem; min-height:36px; padding:6px 14px;" title="Full Altar Experience">
+            ⛶ <span id="lbl-btn-fullscreen">Full Altar View</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="preview-iframe-wrapper" id="preview-wrapper">
         <iframe id="preview-iframe" class="preview-iframe" title="Ofrenda Altar Preview"></iframe>
       </div>
+      <button type="button" id="btn-close-fullscreen" class="btn-close-fullscreen" title="Close Fullscreen">&times;</button>
 
       <div class="wizard-footer">
         <button id="btn-back-4" class="btn btn-secondary">&larr; Back</button>
@@ -370,6 +421,8 @@
     </div>
   </div>
 
+  <script src="/particles.js"></script>
+  <script src="/tilt.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

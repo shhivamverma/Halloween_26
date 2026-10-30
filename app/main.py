@@ -121,6 +121,15 @@ def health_check():
 # --- Ofrenda CRUD Endpoints ---
 
 
+@app.post("/api/demo/seed", response_model=OfrendaRecord)
+def seed_demo_endpoint():
+    """Seed or reset the fictional 'Abuela Rosa' demo ofrenda with photo, offerings, remembrance, and voice."""
+    from app.demo import seed_demo_ofrenda
+
+    storage = get_storage()
+    return seed_demo_ofrenda(storage)
+
+
 @app.post("/api/ofrendas", response_model=OfrendaRecord, status_code=status.HTTP_201_CREATED)
 def create_ofrenda(payload: OfrendaCreate):
     """Create a new ofrenda record on disk."""

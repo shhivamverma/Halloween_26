@@ -105,3 +105,27 @@ def test_patch_ofrenda(client, created_id):
     data = r.json()
     assert data["story_text"] == "Updated family memories"
     assert data["language"] == "en"
+
+
+def test_seed_demo_ofrenda(client):
+    """Test seeding the 1-click hackathon demo ofrenda."""
+    r = client.post("/api/demo/seed")
+    assert r.status_code == 200
+    demo = r.json()
+    assert demo["name"] == "Rosa Hernandez"
+    assert "tamales de mole" in demo["foods"]
+    assert demo["photo"] == "photo.png"
+    assert "Rosa" in demo["remembrance"]
+    assert demo["voice_profile"]["has_reference"] is True
+    assert demo["voice_profile"]["has_synthesized_audio"] is True
+
+    # Standalone HTML altar page rendered
+    page_r = client.get(f"/api/ofrendas/{demo['id']}/page")
+    assert page_r.status_code == 200
+    assert "Rosa Hernandez" in page_r.text
+    assert "candle-interactive" in page_r.text
+
+    # Voice audio accessible
+    voice_r = client.get(f"/api/ofrendas/{demo['id']}/voice/audio")
+    assert voice_r.status_code in (200, 206)
+

@@ -33,13 +33,14 @@
       overflow: hidden;
     }
 
-    /* Papel Picado Banner */
+    /* Papel Picado Banner with 3D Breeze Sway */
     .papel-picado {
       display: flex;
       justify-content: space-around;
       margin-bottom: 28px;
       border-bottom: 2px dashed rgba(242, 140, 40, 0.4);
       padding-bottom: 12px;
+      perspective: 700px;
     }
     .flag {
       width: 58px;
@@ -50,6 +51,21 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      transform-origin: top center;
+      animation: flag-breeze 3.6s infinite ease-in-out alternate;
+    }
+    .flag:nth-child(2) { animation-delay: 0.5s; }
+    .flag:nth-child(3) { animation-delay: 1.0s; }
+    .flag:nth-child(4) { animation-delay: 1.5s; }
+    .flag:nth-child(5) { animation-delay: 2.0s; }
+    .flag:nth-child(6) { animation-delay: 2.5s; }
+    @keyframes flag-breeze {
+      0% { transform: rotateX(0deg) rotateZ(0deg); }
+      50% { transform: rotateX(7deg) rotateZ(1deg); }
+      100% { transform: rotateX(-5deg) rotateZ(-1.2deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .flag { animation: none !important; }
     }
     .flag-orange { background-color: #f28c28; }
     .flag-magenta { background-color: #d81b60; }
@@ -83,6 +99,15 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      position: relative;
+    }
+    .candle-interactive {
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease;
+    }
+    .candle-interactive:hover {
+      transform: scale(1.06);
     }
     .candle-flame {
       width: 18px;
@@ -92,6 +117,31 @@
       box-shadow: 0 0 16px #ffd54f, 0 0 28px #f28c28;
       animation: flame-flicker 1.8s infinite ease-in-out alternate;
       transform-origin: 50% 90%;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .candle.candle-extinguished .candle-flame {
+      opacity: 0;
+      transform: scale(0.2);
+      box-shadow: none;
+      animation: none;
+    }
+    .candle-smoke {
+      display: none;
+      width: 4px;
+      height: 14px;
+      background: rgba(220, 210, 200, 0.4);
+      border-radius: 2px;
+      position: absolute;
+      top: 10px;
+      filter: blur(1px);
+      animation: smoke-rise 1.6s ease-out infinite;
+    }
+    .candle.candle-extinguished .candle-smoke {
+      display: block;
+    }
+    @keyframes smoke-rise {
+      0% { transform: translateY(0) scaleX(1); opacity: 0.6; }
+      100% { transform: translateY(-20px) scaleX(3); opacity: 0; }
     }
     .candle-wick {
       width: 2px;
@@ -119,7 +169,7 @@
       }
     }
 
-    /* Framed Photo */
+    /* Framed Photo with 3D Tilt Parallax */
     .portrait-frame {
       width: 170px;
       height: 210px;
@@ -133,6 +183,12 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .portrait-frame:hover {
+      box-shadow: 0 16px 36px rgba(242, 140, 40, 0.4), 0 0 24px rgba(255, 213, 79, 0.3);
     }
     .portrait-frame img {
       width: 100%;
@@ -361,8 +417,9 @@
     <header class="tier-top">
       <div class="portrait-stage">
         <!-- Left Candle -->
-        <div class="candle">
+        <div class="candle candle-interactive" id="candle-left" title="Click to light / extinguish flame">
           <div class="candle-flame"></div>
+          <div class="candle-smoke"></div>
           <div class="candle-wick"></div>
           <div class="candle-body"></div>
         </div>
@@ -382,8 +439,9 @@
         </div>
 
         <!-- Right Candle -->
-        <div class="candle">
+        <div class="candle candle-interactive" id="candle-right" title="Click to light / extinguish flame">
           <div class="candle-flame"></div>
+          <div class="candle-smoke"></div>
           <div class="candle-wick"></div>
           <div class="candle-body"></div>
         </div>
@@ -536,5 +594,32 @@
       {% endif %}
     </footer>
   </div>
+
+  <!-- Interactive Altar Experience -->
+  <script>
+    (function () {
+      // Interactive Candle Flames
+      var candles = document.querySelectorAll('.candle-interactive');
+      candles.forEach(function (c) {
+        c.addEventListener('click', function () {
+          c.classList.toggle('candle-extinguished');
+        });
+      });
+
+      // 3D Portrait Frame Parallax
+      var frame = document.querySelector('.portrait-frame');
+      if (frame && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        frame.addEventListener('mousemove', function (e) {
+          var rect = frame.getBoundingClientRect();
+          var x = e.clientX - rect.left - rect.width / 2;
+          var y = e.clientY - rect.top - rect.height / 2;
+          frame.style.transform = 'perspective(600px) rotateY(' + (x / 9).toFixed(2) + 'deg) rotateX(' + (-y / 9).toFixed(2) + 'deg) scale3d(1.03, 1.03, 1.03)';
+        });
+        frame.addEventListener('mouseleave', function () {
+          frame.style.transform = 'perspective(600px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)';
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

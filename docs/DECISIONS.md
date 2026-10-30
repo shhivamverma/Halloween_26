@@ -47,3 +47,8 @@ This document records architectural decisions, assumptions, and simplifications 
 ### 11. Dependency Separation via `requirements-voice.txt`
 - **Decision:** Keep `requirements.txt` lightweight for the core MVP application and place voice synthesis dependencies into an optional `requirements-voice.txt`.
 - **Reason:** Ensures the core app can be cloned and run on any machine in under 60 seconds without forcing users to install 2+ GB of PyTorch and TTS packages if they do not intend to use the voice recreation feature.
+
+### 12. Pure-Offline 3D Visual Engine & Hackathon UX Showcase
+- **Decision:** Build a zero-dependency HTML5 Canvas 3D particle engine (marigold/cempasúchil petals and glowing embers) and CSS 3D perspective card tilt with dynamic specular reflection, without importing Three.js or remote CDNs.
+- **Reason:** External 3D or animation libraries would violate the strict offline / zero-CDN constraint. A tailored vanilla JavaScript 3D perspective projection engine (`FOV = 450`) provides silky 60fps cultural ambient storytelling while staying 100% offline. A 1-click demo seed endpoint (`/api/demo/seed`) enables hackathon judges to inspect a complete multi-modal ofrenda in seconds. All animations respect `prefers-reduced-motion`.
+
