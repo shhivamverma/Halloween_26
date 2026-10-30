@@ -188,3 +188,16 @@ def mock_ollama(monkeypatch):
 def mock_ollama_down(monkeypatch):
     """Simulate Ollama daemon unreachable."""
     monkeypatch.setenv("OLLAMA_HOST", "http://127.0.0.1:9")
+
+
+@pytest.fixture
+def mock_whisper(monkeypatch):
+    """Mock speech transcription function."""
+    monkeypatch.setattr(
+        "app.transcribe.transcribe",
+        lambda p, language_hint=None: {
+            "text": "She made delicious tamales every winter.",
+            "language": "es",
+            "duration": 3.2,
+        },
+    )

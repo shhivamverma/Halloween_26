@@ -1,11 +1,14 @@
 """Local speech-to-text transcription using faster-whisper."""
 
+import logging
 import os
 from pathlib import Path
+import time
 from typing import Any, Dict, Optional
 
 from app.config import get_whisper_model
 
+logger = logging.getLogger("ofrenda.transcribe")
 _model = None
 
 
@@ -23,10 +26,10 @@ def get_whisper_model_instance():
 def transcribe(path: str | Path, language_hint: Optional[str] = None) -> Dict[str, Any]:
     """Transcribe audio file at path locally using faster-whisper.
 
-    Returns dict with keys: text, language, duration.
+    Returns dict with keys: text, language, duration. Logs timing only, never content.
     """
+    start_t = time.perf_counter()
     model = get_whisper_model_instance()
-    # If language_hint is valid (e.g. 'en' or 'es'), guide Whisper; otherwise let it detect
     lang = language_hint if language_hint in ("en", "es") else None
 
     segments, info = model.transcribe(str(path), language=lang, beam_size=5)
@@ -36,6 +39,10 @@ def transcribe(path: str | Path, language_hint: Optional[str] = None) -> Dict[st
 
     detected_lang = info.language if info and info.language else (language_hint or "en")
     duration_s = round(info.duration, 2) if info and info.duration else 0.0
+
+    elapsed = time.perf_counter() - start_t
+    rtfx = duration_s / elapsed if elapsed > 0 else 0.0
+    logger.info("Transcribed audio duration %.2fs in %.2fs (RTFx: %.2f)", duration_s, elapsed, rtfx)
 
     return {
         "text": full_text,

@@ -1,11 +1,14 @@
 """FastAPI application entry point, route definitions, and static file mount."""
 
+import io
+import logging
 import os
 from pathlib import Path
 import re
 import tempfile
 from typing import List, Optional
 import uuid
+import zipfile
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.exceptions import RequestValidationError
@@ -20,6 +23,10 @@ from app.render import render_ofrenda
 from app.schemas import GenerateRequest, OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
 from app.storage import Storage
 import app.transcribe as transcribe_module
+
+# Configure privacy-safe logger
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("ofrenda")
 
 app = FastAPI(
     title="Offline Ofrenda Keeper",
@@ -338,6 +345,56 @@ def download_ofrenda_page(id: uuid.UUID):
         "Content-Type": "text/html; charset=utf-8",
     }
     return Response(content=html_content, media_type="text/html", headers=headers)
+
+
+# --- ZIP Export Endpoint ---
+
+
+@app.get("/api/ofrendas/{id}/export.zip")
+def export_ofrenda_zip(id: uuid.UUID):
+    """Export complete ofrenda package as ZIP (ofrenda.html, photo, transcript.txt, ofrenda.json)."""
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    folder = storage.get_folder(str(id))
+    html_content = render_ofrenda(record, storage=storage)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 1. ofrenda.html
+        zf.writestr("ofrenda.html", html_content.encode("utf-8"))
+
+        # 2. ofrenda.json
+        zf.writestr("ofrenda.json", record.model_dump_json(indent=2).encode("utf-8"))
+
+        # 3. transcript.txt
+        transcript_parts = []
+        if record.story_text:
+            transcript_parts.append(f"WRITTEN MEMORIES:\n{record.story_text}")
+        if record.transcript:
+            transcript_parts.append(f"VOICE TRANSCRIPT:\n{record.transcript}")
+        if record.remembrance:
+            transcript_parts.append(f"REMEMBRANCE:\n{record.remembrance}")
+        transcript_content = "\n\n---\n\n".join(transcript_parts)
+        zf.writestr("transcript.txt", transcript_content.encode("utf-8"))
+
+        # 4. photo file if present
+        if record.photo:
+            photo_path = folder / record.photo
+            if photo_path.exists():
+                zf.writestr(record.photo, photo_path.read_bytes())
+
+    buf.seek(0)
+    safe_name = re.sub(r"[^\w\-]", "_", record.name.strip()) or "ofrenda"
+    filename = f"{safe_name}_export.zip"
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Type": "application/zip",
+    }
+    return Response(content=buf.getvalue(), media_type="application/zip", headers=headers)
 
 
 # Static assets mount (served at /)

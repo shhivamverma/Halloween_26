@@ -1,11 +1,15 @@
 """Local LLM interaction via Ollama with fallback and output cleaning."""
 
+import logging
 import re
+import time
 from typing import Any, Optional, Tuple
 
 from app.config import get_llm_timeout_s, get_ollama_host, get_ollama_model
 from app.net import assert_local_url, local_client
 from app.prompts import build_fallback_remembrance, build_prompt
+
+logger = logging.getLogger("ofrenda.llm")
 
 
 def get_client():
@@ -61,12 +65,13 @@ def clean(text: str) -> str:
 
 
 def generate_remembrance(ofrenda: Any, model: Optional[str] = None) -> Tuple[str, str, Optional[str]]:
-    """Generate remembrance via Ollama or fallback template.
+    """Generate remembrance via Ollama or fallback template. Logs timing only, never content.
 
     Returns: (remembrance_text, generated_by, model_used)
     """
     selected_model = model or get_ollama_model()
     prompt = build_prompt(ofrenda)
+    start_t = time.perf_counter()
 
     try:
         client = get_client()
@@ -90,12 +95,17 @@ def generate_remembrance(ofrenda: Any, model: Optional[str] = None) -> Tuple[str
                 raw_text = data.get("message", {}).get("content", "")
                 cleaned_text = clean(raw_text)
                 if cleaned_text:
+                    elapsed = time.perf_counter() - start_t
+                    est_tokens = len(cleaned_text.split()) * 1.33
+                    tok_s = est_tokens / elapsed if elapsed > 0 else 0.0
+                    logger.info("Generated remembrance with %s in %.2fs (~%.1f tokens/sec)", selected_model, elapsed, tok_s)
                     return cleaned_text, f"ollama:{selected_model}", selected_model
 
     except Exception:
-        # Network error, timeout, or Ollama not running
         pass
 
     # Safe fallback
+    elapsed = time.perf_counter() - start_t
+    logger.info("Used fallback template remembrance in %.3fs", elapsed)
     fallback_text = build_fallback_remembrance(ofrenda)
     return fallback_text, "template", None
