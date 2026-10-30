@@ -1,6 +1,8 @@
 """FastAPI application entry point, route definitions, and static file mount."""
 
+import os
 from pathlib import Path
+import tempfile
 from typing import List
 import uuid
 
@@ -10,10 +12,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.config import get_max_photo_mb, get_ollama_host, get_ollama_model
+from app.config import get_max_audio_mb, get_max_photo_mb, get_ollama_host, get_ollama_model
 from app.net import local_client
 from app.schemas import OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
 from app.storage import Storage
+import app.transcribe as transcribe_module
 
 app = FastAPI(
     title="Offline Ofrenda Keeper",
@@ -183,6 +186,98 @@ async def upload_photo(id: uuid.UUID, file: UploadFile = File(...)):
         "id": str(id),
         "photo": updated_record.photo,
     }
+
+
+# --- Audio Upload & Transcription Endpoint ---
+
+ALLOWED_AUDIO_EXTENSIONS = {".webm", ".ogg", ".wav", ".mp3", ".m4a"}
+ALLOWED_AUDIO_MIMES = {
+    "audio/webm",
+    "audio/ogg",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "video/webm",
+}
+
+
+@app.post("/api/ofrendas/{id}/audio")
+def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
+    """Upload voice note, transcribe locally using faster-whisper, and append to transcript.
+
+    Runs synchronously in threadpool to keep the server responsive.
+    """
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    ext = Path(file.filename or "").suffix.lower()
+    content_type = (file.content_type or "").lower()
+
+    if ext not in ALLOWED_AUDIO_EXTENSIONS and content_type not in ALLOWED_AUDIO_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Unsupported audio format. Allowed: webm, ogg, wav, mp3, m4a.",
+        )
+
+    # Read audio bytes
+    audio_bytes = file.file.read()
+    max_bytes = get_max_audio_mb() * 1024 * 1024
+    if len(audio_bytes) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Audio exceeds maximum size of {get_max_audio_mb()} MB",
+        )
+
+    # Determine suffix for temp file
+    suffix = ext if ext in ALLOWED_AUDIO_EXTENSIONS else ".webm"
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    temp_path = Path(temp_file.name)
+
+    keep_audio = os.environ.get("KEEP_AUDIO", "0") in ("1", "true", "True")
+
+    try:
+        temp_file.write(audio_bytes)
+        temp_file.close()
+
+        # Run transcription with language hint from ofrenda
+        result = transcribe_module.transcribe(temp_path, language_hint=record.language)
+        text = result.get("text", "").strip()
+
+        if not text:
+            return {
+                "text": "",
+                "language": result.get("language", record.language),
+                "duration": result.get("duration", 0.0),
+                "warning": "No speech detected in audio note.",
+            }
+
+        # Append to existing transcript
+        existing_transcript = record.transcript.strip() if record.transcript else ""
+        if existing_transcript:
+            new_transcript = f"{existing_transcript}\n\n{text}"
+        else:
+            new_transcript = text
+
+        storage.update(str(id), {"transcript": new_transcript})
+
+        return {
+            "text": text,
+            "language": result.get("language", record.language),
+            "duration": result.get("duration", 0.0),
+        }
+    finally:
+        if not keep_audio and temp_path.exists():
+            try:
+                temp_path.unlink()
+            except OSError:
+                pass
 
 
 # Static assets mount (served at /)

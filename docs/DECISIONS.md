@@ -15,3 +15,7 @@ This document records architectural decisions, assumptions, and simplifications 
 ### 3. Strict Offline Network Guard
 - **Decision:** Refuse any outbound HTTP connection to addresses other than `127.0.0.1` and `localhost` at the client creation and request layer.
 - **Reason:** Ensures zero data leakage and 100% offline compliance as required by the challenge.
+
+### 4. Audio Decoding Compatibility (PyAV)
+- **Decision:** Pin `av>=12.0.0,<14.0.0` in `requirements.txt`.
+- **Reason:** Newer versions of PyAV (14+) removed the `metadata_errors` argument from `av.open()`, causing an unhandled `TypeError` inside `faster_whisper/audio.py`. Pinning `av<14` ensures reliable offline decoding for browser audio (WebM/Opus, OGG, WAV, MP3, M4A).
