@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 import tempfile
-from typing import List
+from typing import List, Optional
 import uuid
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, status
@@ -13,8 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_max_audio_mb, get_max_photo_mb, get_ollama_host, get_ollama_model
+from app.llm import generate_remembrance
 from app.net import local_client
-from app.schemas import OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
+from app.schemas import GenerateRequest, OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
 from app.storage import Storage
 import app.transcribe as transcribe_module
 
@@ -208,10 +209,7 @@ ALLOWED_AUDIO_MIMES = {
 
 @app.post("/api/ofrendas/{id}/audio")
 def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
-    """Upload voice note, transcribe locally using faster-whisper, and append to transcript.
-
-    Runs synchronously in threadpool to keep the server responsive.
-    """
+    """Upload voice note, transcribe locally using faster-whisper, and append to transcript."""
     storage = get_storage()
     record = storage.get(str(id))
     if not record:
@@ -226,7 +224,6 @@ def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
             detail="Unsupported audio format. Allowed: webm, ogg, wav, mp3, m4a.",
         )
 
-    # Read audio bytes
     audio_bytes = file.file.read()
     max_bytes = get_max_audio_mb() * 1024 * 1024
     if len(audio_bytes) > max_bytes:
@@ -235,7 +232,6 @@ def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
             detail=f"Audio exceeds maximum size of {get_max_audio_mb()} MB",
         )
 
-    # Determine suffix for temp file
     suffix = ext if ext in ALLOWED_AUDIO_EXTENSIONS else ".webm"
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     temp_path = Path(temp_file.name)
@@ -246,7 +242,6 @@ def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
         temp_file.write(audio_bytes)
         temp_file.close()
 
-        # Run transcription with language hint from ofrenda
         result = transcribe_module.transcribe(temp_path, language_hint=record.language)
         text = result.get("text", "").strip()
 
@@ -258,7 +253,6 @@ def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
                 "warning": "No speech detected in audio note.",
             }
 
-        # Append to existing transcript
         existing_transcript = record.transcript.strip() if record.transcript else ""
         if existing_transcript:
             new_transcript = f"{existing_transcript}\n\n{text}"
@@ -278,6 +272,36 @@ def upload_audio(id: uuid.UUID, file: UploadFile = File(...)):
                 temp_path.unlink()
             except OSError:
                 pass
+
+
+# --- Remembrance Generation Endpoint ---
+
+
+@app.post("/api/ofrendas/{id}/generate")
+def generate_ofrenda_remembrance(id: uuid.UUID, body: Optional[GenerateRequest] = None):
+    """Generate remembrance for ofrenda using local Ollama model or fallback template."""
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    model = body.model if body and body.model else None
+    remembrance, generated_by, model_used = generate_remembrance(record, model=model)
+
+    storage.update(
+        str(id),
+        {
+            "remembrance": remembrance,
+            "generated_by": generated_by,
+            "model_used": model_used,
+        },
+    )
+
+    return {
+        "remembrance": remembrance,
+        "generated_by": generated_by,
+        "model_used": model_used,
+    }
 
 
 # Static assets mount (served at /)

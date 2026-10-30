@@ -4,6 +4,7 @@ import struct
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
+import httpx
 
 from app.main import app
 import app.config as config
@@ -74,8 +75,30 @@ def created_id(client) -> str:
 
 
 @pytest.fixture
+def created_id_with_facts(client) -> str:
+    """Create ofrenda with complete facts for generation testing."""
+    r = client.post(
+        "/api/ofrendas",
+        json={
+            "name": "Rosa Hernandez",
+            "relationship": "grandmother",
+            "birth_year": 1941,
+            "death_year": 2023,
+            "language": "en",
+            "foods": ["tamales", "arroz con leche"],
+            "drinks": ["cafe de olla"],
+            "songs": ["Cielito Lindo"],
+            "objects": ["her rosary"],
+            "story_text": "Rosa filled our home with music and taught us how to make tamales every December.",
+        },
+    )
+    assert r.status_code == 201
+    return r.json()["id"]
+
+
+@pytest.fixture
 def sample_ofrenda():
-    """Return a dictionary representing sample ofrenda data."""
+    """Return a dictionary/model representing sample ofrenda data."""
     from app.schemas import OfrendaRecord
 
     return OfrendaRecord(
@@ -97,6 +120,13 @@ def sample_ofrenda():
         generated_by="template",
         model_used=None,
     )
+
+
+@pytest.fixture
+def sample_ofrenda_es(sample_ofrenda):
+    """Alias for Spanish sample ofrenda."""
+    sample_ofrenda.language = "es"
+    return sample_ofrenda
 
 
 @pytest.fixture
@@ -134,3 +164,27 @@ def minimal_ofrenda():
         generated_by=None,
         model_used=None,
     )
+
+
+@pytest.fixture
+def mock_ollama(monkeypatch):
+    """Mock Ollama chat endpoint with a given response text."""
+    def _setter(text: str):
+        def fake_send(self, request, *args, **kwargs):
+            if "api/chat" in str(request.url):
+                return httpx.Response(
+                    200,
+                    json={"message": {"role": "assistant", "content": text}},
+                    request=request,
+                )
+            return httpx.Response(200, json={}, request=request)
+
+        monkeypatch.setattr("app.net.SafeLocalClient.send", fake_send)
+
+    return _setter
+
+
+@pytest.fixture
+def mock_ollama_down(monkeypatch):
+    """Simulate Ollama daemon unreachable."""
+    monkeypatch.setenv("OLLAMA_HOST", "http://127.0.0.1:9")
