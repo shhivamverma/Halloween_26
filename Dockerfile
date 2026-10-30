@@ -28,7 +28,6 @@ RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', de
 # Copy application source code
 COPY app/ ./app/
 COPY scripts/ ./scripts/
-COPY templates/ ./templates/ 2>/dev/null || true
 
 # Create persistent data volume directory
 RUN mkdir -p /app/data
