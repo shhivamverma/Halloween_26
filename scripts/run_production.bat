@@ -29,3 +29,4 @@ if exist .venv\Scripts\uvicorn.exe (
 )
 
 endlocal
+
