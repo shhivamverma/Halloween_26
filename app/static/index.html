@@ -2,11 +2,279 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Offline Ofrenda Keeper</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h1>Offline Ofrenda Keeper</h1>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-title" id="lbl-brand-title">Offline Ofrenda Keeper</div>
+      <div class="header-controls">
+        <div id="status-badge" class="status-badge" role="status" aria-live="polite">
+          <span class="status-dot"></span>
+          <span id="status-text">Running locally. No internet needed</span>
+        </div>
+        <button id="btn-lang-toggle" class="btn btn-secondary" aria-label="Toggle language">ES / EN</button>
+        <button id="btn-open-drawer" class="btn btn-secondary" aria-label="My saved ofrendas">My Ofrendas</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Wizard Container -->
+  <main class="main-content">
+    <!-- Stepper Navigation -->
+    <nav class="wizard-progress" aria-label="Creation Steps">
+      <div class="progress-step active" id="prog-step-1">
+        <span class="step-number">1</span>
+        <span id="step-label-1">About Them</span>
+      </div>
+      <div class="progress-step" id="prog-step-2">
+        <span class="step-number">2</span>
+        <span id="step-label-2">Offerings</span>
+      </div>
+      <div class="progress-step" id="prog-step-3">
+        <span class="step-number">3</span>
+        <span id="step-label-3">Memories & Photo</span>
+      </div>
+      <div class="progress-step" id="prog-step-4">
+        <span class="step-number">4</span>
+        <span id="step-label-4">Create & Preview</span>
+      </div>
+    </nav>
+
+    <!-- Step 1: About Them -->
+    <section class="step-panel active" id="panel-step-1" aria-labelledby="step-1-title">
+      <div class="panel-header">
+        <h1 class="panel-title" id="step-1-title">Who are we honoring?</h1>
+        <p class="panel-subtitle" id="step-1-sub">Begin by entering their name and dates for the altar.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="input-name" id="lbl-name">Full Name *</label>
+        <input type="text" id="input-name" required maxlength="80" placeholder="e.g. Rosa Hernandez">
+      </div>
+
+      <div class="form-group">
+        <label for="input-relationship" id="lbl-relationship">Relationship to You</label>
+        <input type="text" id="input-relationship" maxlength="40" placeholder="e.g. Grandmother, Father, Beloved Friend">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="input-birth-year" id="lbl-birth-year">Birth Year</label>
+          <input type="number" id="input-birth-year" min="1800" max="2100" placeholder="e.g. 1941">
+        </div>
+        <div class="form-group">
+          <label for="input-death-year" id="lbl-death-year">Passing Year</label>
+          <input type="number" id="input-death-year" min="1800" max="2100" placeholder="e.g. 2023">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="select-lang" id="lbl-language">Altar & Remembrance Language</label>
+        <select id="select-lang">
+          <option value="es" selected>Español</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <div class="wizard-footer">
+        <div></div>
+        <button id="btn-next-1" class="btn btn-primary">Next: Offerings &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 2: Offerings -->
+    <section class="step-panel" id="panel-step-2" aria-labelledby="step-2-title">
+      <div class="panel-header">
+        <h1 class="panel-title" id="step-2-title">Traditional Offerings</h1>
+        <p class="panel-subtitle" id="step-2-sub">Add the favorite foods, drinks, music, and keepsakes they loved.</p>
+      </div>
+
+      <!-- Foods -->
+      <div class="form-group">
+        <label for="input-food" id="lbl-foods">Favorite Foods (up to 12)</label>
+        <div id="chips-foods" class="chip-container"></div>
+        <div class="chip-input-row">
+          <input type="text" id="input-food" maxlength="60" placeholder="e.g. Tamales de mole, Arroz con leche (Press Enter)">
+          <button type="button" id="btn-add-food" class="btn btn-secondary">Add</button>
+        </div>
+      </div>
+
+      <!-- Drinks -->
+      <div class="form-group">
+        <label for="input-drink" id="lbl-drinks">Favorite Drinks (up to 6)</label>
+        <div id="chips-drinks" class="chip-container"></div>
+        <div class="chip-input-row">
+          <input type="text" id="input-drink" maxlength="60" placeholder="e.g. Café de olla, Atole de vainilla (Press Enter)">
+          <button type="button" id="btn-add-drink" class="btn btn-secondary">Add</button>
+        </div>
+      </div>
+
+      <!-- Songs -->
+      <div class="form-group">
+        <label for="input-song" id="lbl-songs">Songs They Loved (up to 6)</label>
+        <div id="chips-songs" class="chip-container"></div>
+        <div class="chip-input-row">
+          <input type="text" id="input-song" maxlength="60" placeholder="e.g. Cielito Lindo, Amor Eterno (Press Enter)">
+          <button type="button" id="btn-add-song" class="btn btn-secondary">Add</button>
+        </div>
+      </div>
+
+      <!-- Objects -->
+      <div class="form-group">
+        <label for="input-object" id="lbl-objects">Keepsakes & Cherished Objects (up to 8)</label>
+        <div id="chips-objects" class="chip-container"></div>
+        <div class="chip-input-row">
+          <input type="text" id="input-object" maxlength="60" placeholder="e.g. Her silver rosary, Gardening gloves (Press Enter)">
+          <button type="button" id="btn-add-object" class="btn btn-secondary">Add</button>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <button id="btn-back-2" class="btn btn-secondary">&larr; Back</button>
+        <button id="btn-next-2" class="btn btn-primary">Next: Memories & Photo &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 3: Memories & Photo -->
+    <section class="step-panel" id="panel-step-3" aria-labelledby="step-3-title">
+      <div class="panel-header">
+        <h1 class="panel-title" id="step-3-title">Memories, Voice & Photo</h1>
+        <p class="panel-subtitle" id="step-3-sub">Upload a picture and record or write the stories you want to cherish.</p>
+      </div>
+
+      <!-- Photo Picker -->
+      <div class="form-group">
+        <label for="input-photo" id="lbl-photo">Portrait Photo</label>
+        <div class="photo-uploader">
+          <div class="photo-preview" id="photo-preview-box">
+            <span class="photo-preview-empty" id="lbl-no-photo">No photo selected</span>
+          </div>
+          <div>
+            <input type="file" id="input-photo" accept="image/png, image/jpeg, image/webp" style="margin-bottom:8px;">
+            <div class="field-hint" id="lbl-photo-hint">Accepted formats: PNG, JPG, WebP. Photo is saved only on your computer.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typed Story -->
+      <div class="form-group">
+        <label for="textarea-story" id="lbl-stories">Written Memories & Stories</label>
+        <textarea id="textarea-story" maxlength="5000" placeholder="Write any memories, anecdotes, or what you loved most about them..."></textarea>
+      </div>
+
+      <!-- Voice Note Recorder -->
+      <div class="voice-recorder-card">
+        <label id="lbl-record-title">Record a Voice Memory (Transcribed Locally via Whisper)</label>
+        <div class="record-controls">
+          <button type="button" id="btn-record" class="btn btn-secondary">
+            <span>●</span> <span id="lbl-btn-record">Record Voice Note</span>
+          </button>
+          <button type="button" id="btn-stop-record" class="btn btn-danger" style="display:none;">
+            ■ <span id="lbl-btn-stop">Stop Recording</span>
+          </button>
+          <span id="record-timer" class="record-timer" style="display:none;">00:00</span>
+          <span id="record-status-msg" class="field-hint"></span>
+        </div>
+        <div id="mic-gentle-msg" class="field-hint" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- Editable Transcript Box -->
+      <div class="form-group">
+        <label for="textarea-transcript" id="lbl-transcript">Spoken Memories (Voice Note Transcript)</label>
+        <textarea id="textarea-transcript" placeholder="Transcribed text will appear here. You can freely edit or expand upon it before finalizing."></textarea>
+        <div class="field-hint" id="lbl-transcript-hint">Whisper transcribes speech locally on your laptop without sending voice data anywhere.</div>
+      </div>
+
+      <div class="wizard-footer">
+        <button id="btn-back-3" class="btn btn-secondary">&larr; Back</button>
+        <button id="btn-next-3" class="btn btn-primary">Next: Create Altar &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 4: Create & Preview -->
+    <section class="step-panel" id="panel-step-4" aria-labelledby="step-4-title">
+      <div class="panel-header">
+        <h1 class="panel-title" id="step-4-title">Honoring Their Spirit</h1>
+        <p class="panel-subtitle" id="step-4-sub">Generate a warm remembrance using a local AI model and view the completed altar.</p>
+      </div>
+
+      <!-- Model Picker & Generate Bar -->
+      <div class="form-row" style="align-items: flex-end; margin-bottom: 20px;">
+        <div class="form-group" style="max-width: 280px;">
+          <label for="select-model" id="lbl-model">Local AI Model (Ollama)</label>
+          <select id="select-model">
+            <option value="llama3.2:3b">llama3.2:3b (Default)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <button type="button" id="btn-generate" class="btn btn-primary" style="min-width: 220px;">
+            <span id="btn-generate-text">Generate Remembrance</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Candle Status -->
+      <div id="generate-loading" style="display:none; margin: 16px 0; color: var(--candle-gold); font-style: italic;">
+        🕯️ <span id="loading-message">Lighting the candles...</span>
+      </div>
+
+      <!-- Editable Remembrance Box -->
+      <div class="form-group">
+        <label for="textarea-remembrance" id="lbl-remembrance">Altar Remembrance (Editable)</label>
+        <textarea id="textarea-remembrance" style="min-height: 140px;" placeholder="The generated remembrance will appear here. Feel free to revise any words before saving."></textarea>
+        <div style="margin-top: 8px;">
+          <button type="button" id="btn-save-remembrance" class="btn btn-secondary" style="font-size:0.9rem;">
+            Save Edits to Remembrance
+          </button>
+          <span id="remembrance-saved-msg" class="field-hint" style="color:var(--success); margin-left:12px;"></span>
+        </div>
+      </div>
+
+      <!-- Action Toolbar -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px 0;">
+        <button type="button" id="btn-download-html" class="btn btn-primary">
+          📥 Download HTML File
+        </button>
+        <button type="button" id="btn-print-pdf" class="btn btn-secondary">
+          🖨️ Print or Save as PDF
+        </button>
+        <button type="button" id="btn-regenerate" class="btn btn-secondary">
+          🔄 Regenerate
+        </button>
+      </div>
+
+      <!-- Live Preview Iframe -->
+      <div class="preview-iframe-wrapper">
+        <iframe id="preview-iframe" class="preview-iframe" title="Ofrenda Altar Preview"></iframe>
+      </div>
+
+      <div class="wizard-footer">
+        <button id="btn-back-4" class="btn btn-secondary">&larr; Back</button>
+        <button id="btn-start-new" class="btn btn-secondary">+ Create Another Ofrenda</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- My Ofrendas Drawer Backdrop -->
+  <div class="drawer-backdrop" id="drawer-backdrop" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 id="drawer-title" style="color:var(--candle-gold); font-size:1.4rem;">Saved Ofrendas</h2>
+        <button type="button" id="btn-close-drawer" class="btn btn-secondary" style="min-height:36px; padding:6px 12px;">&times;</button>
+      </div>
+      <div id="drawer-list"></div>
+      <div style="margin-top:20px;">
+        <button type="button" id="btn-new-from-drawer" class="btn btn-primary" style="width:100%;">
+          + New Ofrenda
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>
