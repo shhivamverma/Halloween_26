@@ -1,10 +1,465 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ ofrenda.language | default('es') }}">
 <head>
-<meta charset="utf-8">
-<title>Ofrenda</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ ofrenda.name }} — Ofrenda</title>
+  <style>
+    /* Reset & Base System Font Styles */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #120c18;
+      color: #fff8e7;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.6;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+    .altar-wrapper {
+      width: 100%;
+      max-width: 820px;
+      background: radial-gradient(circle at 50% 20%, #261633 0%, #150d1e 75%, #0f0815 100%);
+      border: 3px solid #f28c28;
+      border-radius: 12px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(242, 140, 40, 0.25);
+      padding: 32px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Papel Picado Banner */
+    .papel-picado {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 28px;
+      border-bottom: 2px dashed rgba(242, 140, 40, 0.4);
+      padding-bottom: 12px;
+    }
+    .flag {
+      width: 58px;
+      height: 48px;
+      border-radius: 2px 2px 8px 8px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    }
+    .flag-orange { background-color: #f28c28; }
+    .flag-magenta { background-color: #d81b60; }
+    .flag-gold { background-color: #ffd54f; }
+    .flag-purple { background-color: #8e24aa; }
+    .flag-teal { background-color: #00897b; }
+    .flag-hole {
+      width: 14px;
+      height: 14px;
+      background: #120c18;
+      border-radius: 50%;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* Tier 1: Top Tier (Portrait, Candles, Header) */
+    .tier-top {
+      text-align: center;
+      margin-bottom: 32px;
+      position: relative;
+    }
+    .portrait-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 20px;
+    }
+
+    /* Candle Styling & Animations */
+    .candle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .candle-flame {
+      width: 18px;
+      height: 30px;
+      background: radial-gradient(ellipse at 50% 80%, #ffffff 0%, #ffd54f 45%, #f28c28 85%, transparent 100%);
+      border-radius: 50% 50% 35% 35%;
+      box-shadow: 0 0 16px #ffd54f, 0 0 28px #f28c28;
+      animation: flame-flicker 1.8s infinite ease-in-out alternate;
+      transform-origin: 50% 90%;
+    }
+    .candle-wick {
+      width: 2px;
+      height: 7px;
+      background-color: #3e2723;
+    }
+    .candle-body {
+      width: 26px;
+      height: 64px;
+      background: linear-gradient(to right, #ffe082, #ffecb3 50%, #ffd54f 100%);
+      border-radius: 3px 3px 6px 6px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.5);
+    }
+
+    @keyframes flame-flicker {
+      0% { transform: scale(1) rotate(-1.5deg); opacity: 0.95; }
+      25% { transform: scale(1.08, 0.94) rotate(1.5deg); opacity: 1; filter: drop-shadow(0 0 12px #ffd54f); }
+      50% { transform: scale(0.96, 1.05) rotate(-1deg); opacity: 0.88; }
+      75% { transform: scale(1.04, 0.97) rotate(2deg); opacity: 0.98; }
+      100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .candle-flame {
+        animation: none !important;
+      }
+    }
+
+    /* Framed Photo */
+    .portrait-frame {
+      width: 170px;
+      height: 210px;
+      border: 4px solid #ffd54f;
+      outline: 4px solid #f28c28;
+      outline-offset: 4px;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: #2b1b3a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+    }
+    .portrait-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .portrait-placeholder {
+      color: #ffd54f;
+      font-size: 15px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .person-name {
+      font-size: 2.2rem;
+      color: #ffd54f;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      text-shadow: 0 2px 10px rgba(255, 213, 79, 0.35);
+    }
+    .person-meta {
+      font-size: 1.15rem;
+      color: #f28c28;
+      font-style: italic;
+      margin-bottom: 4px;
+    }
+    .person-years {
+      font-size: 1.1rem;
+      color: #e0d6cb;
+      letter-spacing: 1px;
+    }
+
+    /* Tier 2: Middle Tier (Remembrance & Quotes) */
+    .tier-middle {
+      margin-bottom: 32px;
+    }
+    .remembrance-card {
+      background: rgba(33, 21, 45, 0.85);
+      border-left: 4px solid #f28c28;
+      border-radius: 6px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+    .remembrance-title {
+      font-size: 1.25rem;
+      color: #ffd54f;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .remembrance-text {
+      font-size: 1.12rem;
+      line-height: 1.8;
+      color: #fff9f0;
+      white-space: pre-line;
+    }
+    .words-card {
+      background: rgba(43, 27, 58, 0.65);
+      border-left: 4px solid #d81b60;
+      border-radius: 6px;
+      padding: 20px 24px;
+      margin-top: 16px;
+      font-style: italic;
+    }
+    .words-heading {
+      font-size: 1.05rem;
+      color: #ff80ab;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      font-style: normal;
+    }
+    .words-quote {
+      color: #f5eedb;
+      white-space: pre-line;
+      line-height: 1.7;
+    }
+
+    /* Tier 3: Bottom Tier (Offerings) */
+    .tier-bottom {
+      margin-bottom: 28px;
+    }
+    .offerings-header {
+      text-align: center;
+      font-size: 1.3rem;
+      color: #f28c28;
+      margin-bottom: 18px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .offerings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .offering-card {
+      background: rgba(30, 18, 42, 0.9);
+      border: 1px solid rgba(242, 140, 40, 0.35);
+      border-radius: 8px;
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .offering-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.05rem;
+      color: #ffd54f;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .offering-icon {
+      width: 18px;
+      height: 18px;
+      fill: #f28c28;
+    }
+    .offering-list {
+      list-style: none;
+    }
+    .offering-list li {
+      font-size: 0.98rem;
+      color: #ebdccc;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .offering-list li:last-child {
+      border-bottom: none;
+    }
+
+    /* Footer & Model Attribution */
+    .altar-footer {
+      border-top: 1px solid rgba(242, 140, 40, 0.3);
+      padding-top: 16px;
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #baa898;
+    }
+
+    /* Print Stylesheet */
+    @media print {
+      @page {
+        margin: 10mm;
+        size: portrait;
+      }
+      body {
+        background-color: #120c18 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding: 0 !important;
+      }
+      .altar-wrapper {
+        box-shadow: none !important;
+        border: 2px solid #f28c28 !important;
+        max-width: 100% !important;
+        padding: 16px !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
 </head>
 <body>
-<h1>Ofrenda</h1>
+  <div class="altar-wrapper">
+    <!-- Papel Picado Garland -->
+    <div class="papel-picado">
+      <div class="flag flag-orange"><div class="flag-hole"></div></div>
+      <div class="flag flag-magenta"><div class="flag-hole"></div></div>
+      <div class="flag flag-gold"><div class="flag-hole"></div></div>
+      <div class="flag flag-purple"><div class="flag-hole"></div></div>
+      <div class="flag flag-teal"><div class="flag-hole"></div></div>
+      <div class="flag flag-orange"><div class="flag-hole"></div></div>
+    </div>
+
+    <!-- Tier 1: Altar Summit & Honored One -->
+    <header class="tier-top">
+      <div class="portrait-stage">
+        <!-- Left Candle -->
+        <div class="candle">
+          <div class="candle-flame"></div>
+          <div class="candle-wick"></div>
+          <div class="candle-body"></div>
+        </div>
+
+        <!-- Central Portrait -->
+        <div class="portrait-frame">
+          {% if photo_uri %}
+            <img src="{{ photo_uri }}" alt="{{ ofrenda.name }}">
+          {% else %}
+            <div class="portrait-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" class="offering-icon" style="margin-bottom:8px;">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+              </svg>
+              <div>En Memoria</div>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Right Candle -->
+        <div class="candle">
+          <div class="candle-flame"></div>
+          <div class="candle-wick"></div>
+          <div class="candle-body"></div>
+        </div>
+      </div>
+
+      <h1 class="person-name">{{ ofrenda.name }}</h1>
+      {% if ofrenda.relationship %}
+        <div class="person-meta">{{ ofrenda.relationship }}</div>
+      {% endif %}
+      {% if ofrenda.birth_year or ofrenda.death_year %}
+        <div class="person-years">
+          {% if ofrenda.birth_year and ofrenda.death_year %}
+            {{ ofrenda.birth_year }} &mdash; {{ ofrenda.death_year }}
+          {% elif ofrenda.birth_year %}
+            b. {{ ofrenda.birth_year }}
+          {% else %}
+            d. {{ ofrenda.death_year }}
+          {% endif %}
+        </div>
+      {% endif %}
+    </header>
+
+    <!-- Tier 2: Remembrance & Words -->
+    <main class="tier-middle">
+      {% if ofrenda.remembrance %}
+        <section class="remembrance-card">
+          <h2 class="remembrance-title">
+            {% if ofrenda.language == 'es' %}Recuerdo y Memoria{% else %}Remembrance{% endif %}
+          </h2>
+          <div class="remembrance-text">{{ ofrenda.remembrance }}</div>
+        </section>
+      {% endif %}
+
+      {% if ofrenda.story_text or ofrenda.transcript %}
+        <section class="words-card">
+          <h3 class="words-heading">
+            {% if ofrenda.language == 'es' %}En sus propias palabras y memorias{% else %}In their own words and memories{% endif %}
+          </h3>
+          {% if ofrenda.story_text %}
+            <div class="words-quote">{{ ofrenda.story_text }}</div>
+          {% endif %}
+          {% if ofrenda.transcript %}
+            <div class="words-quote" style="margin-top: 10px;">{{ ofrenda.transcript }}</div>
+          {% endif %}
+        </section>
+      {% endif %}
+    </main>
+
+    <!-- Tier 3: Offerings -->
+    {% if ofrenda.foods or ofrenda.drinks or ofrenda.songs or ofrenda.objects %}
+      <section class="tier-bottom">
+        <h2 class="offerings-header">
+          {% if ofrenda.language == 'es' %}Ofrendas del Altar{% else %}Altar Offerings{% endif %}
+        </h2>
+        <div class="offerings-grid">
+          {% if ofrenda.foods %}
+            <div class="offering-card">
+              <div class="offering-card-title">
+                <svg viewBox="0 0 24 24" class="offering-icon"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+                <span>{% if ofrenda.language == 'es' %}Comidas Favoritas{% else %}Favorite Foods{% endif %}</span>
+              </div>
+              <ul class="offering-list">
+                {% for item in ofrenda.foods %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if ofrenda.drinks %}
+            <div class="offering-card">
+              <div class="offering-card-title">
+                <svg viewBox="0 0 24 24" class="offering-icon"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
+                <span>{% if ofrenda.language == 'es' %}Bebidas Favoritas{% else %}Favorite Drinks{% endif %}</span>
+              </div>
+              <ul class="offering-list">
+                {% for item in ofrenda.drinks %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if ofrenda.songs %}
+            <div class="offering-card">
+              <div class="offering-card-title">
+                <svg viewBox="0 0 24 24" class="offering-icon"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <span>{% if ofrenda.language == 'es' %}Música y Canciones{% else %}Songs They Loved{% endif %}</span>
+              </div>
+              <ul class="offering-list">
+                {% for item in ofrenda.songs %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if ofrenda.objects %}
+            <div class="offering-card">
+              <div class="offering-card-title">
+                <svg viewBox="0 0 24 24" class="offering-icon"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span>{% if ofrenda.language == 'es' %}Objetos y Recuerdos{% else %}Cherished Objects{% endif %}</span>
+              </div>
+              <ul class="offering-list">
+                {% for item in ofrenda.objects %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+
+    <!-- Footer Attribution -->
+    <footer class="altar-footer">
+      {% if ofrenda.model_used %}
+        Written locally with {{ ofrenda.model_used }} &bull; Dia de los Muertos
+      {% elif ofrenda.generated_by == 'template' %}
+        Family remembrance template &bull; Dia de los Muertos
+      {% else %}
+        Dia de los Muertos &bull; Always in our hearts
+      {% endif %}
+    </footer>
+  </div>
 </body>
 </html>

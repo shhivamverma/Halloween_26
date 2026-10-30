@@ -2,19 +2,21 @@
 
 import os
 from pathlib import Path
+import re
 import tempfile
 from typing import List, Optional
 import uuid
 
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_max_audio_mb, get_max_photo_mb, get_ollama_host, get_ollama_model
 from app.llm import generate_remembrance
 from app.net import local_client
+from app.render import render_ofrenda
 from app.schemas import GenerateRequest, OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
 from app.storage import Storage
 import app.transcribe as transcribe_module
@@ -302,6 +304,40 @@ def generate_ofrenda_remembrance(id: uuid.UUID, body: Optional[GenerateRequest] 
         "generated_by": generated_by,
         "model_used": model_used,
     }
+
+
+# --- Ofrenda HTML Render & Download Endpoints ---
+
+
+@app.get("/api/ofrendas/{id}/page", response_class=HTMLResponse)
+def view_ofrenda_page(id: uuid.UUID):
+    """Render self-contained HTML altar page."""
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    html_content = render_ofrenda(record, storage=storage)
+    return HTMLResponse(content=html_content, status_code=200)
+
+
+@app.get("/api/ofrendas/{id}/download")
+def download_ofrenda_page(id: uuid.UUID):
+    """Download self-contained HTML altar page with attachment header."""
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    html_content = render_ofrenda(record, storage=storage)
+    safe_name = re.sub(r"[^\w\-]", "_", record.name.strip()) or "ofrenda"
+    filename = f"{safe_name}_ofrenda.html"
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Type": "text/html; charset=utf-8",
+    }
+    return Response(content=html_content, media_type="text/html", headers=headers)
 
 
 # Static assets mount (served at /)
