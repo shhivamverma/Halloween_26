@@ -35,9 +35,5 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://127.0.0.1:8000/api/health || exit 1
-
-# Launch production server on 0.0.0.0
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Launch server dynamically binding to Render's assigned $PORT (defaults to 8000)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

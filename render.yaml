@@ -11,7 +11,5 @@ services:
         value: base
       - key: HF_HUB_OFFLINE
         value: "1"
-    disk:
-      name: ofrenda-storage
-      mountPath: /app/data
-      sizeGB: 1
+      - key: PORT
+        value: 10000
