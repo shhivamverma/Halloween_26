@@ -59,33 +59,33 @@
         <p class="panel-subtitle" id="step-1-sub">Begin by entering their name and dates for the altar.</p>
       </div>
 
-      <div class="form-group">
-        <label for="input-name" id="lbl-name">Full Name *</label>
-        <input type="text" id="input-name" required maxlength="80" placeholder="e.g. Rosa Hernandez">
-      </div>
-
-      <div class="form-group">
-        <label for="input-relationship" id="lbl-relationship">Relationship to You</label>
-        <input type="text" id="input-relationship" maxlength="40" placeholder="e.g. Grandmother, Father, Beloved Friend">
+      <div class="form-row">
+        <div class="form-group" style="flex: 1.2; min-width: 260px;">
+          <label for="input-name" id="lbl-name">Full Name *</label>
+          <input type="text" id="input-name" required maxlength="80" placeholder="e.g. Rosa Hernandez">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 240px;">
+          <label for="input-relationship" id="lbl-relationship">Relationship to You</label>
+          <input type="text" id="input-relationship" maxlength="40" placeholder="e.g. Grandmother, Father, Beloved Friend">
+        </div>
       </div>
 
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" style="min-width: 140px;">
           <label for="input-birth-year" id="lbl-birth-year">Birth Year</label>
           <input type="number" id="input-birth-year" min="1800" max="2100" placeholder="e.g. 1941">
         </div>
-        <div class="form-group">
+        <div class="form-group" style="min-width: 140px;">
           <label for="input-death-year" id="lbl-death-year">Passing Year</label>
           <input type="number" id="input-death-year" min="1800" max="2100" placeholder="e.g. 2023">
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="select-lang" id="lbl-language">Altar & Remembrance Language</label>
-        <select id="select-lang">
-          <option value="es" selected>Español</option>
-          <option value="en">English</option>
-        </select>
+        <div class="form-group" style="min-width: 180px;">
+          <label for="select-lang" id="lbl-language">Altar & Remembrance Language</label>
+          <select id="select-lang">
+            <option value="es" selected>Español</option>
+            <option value="en">English</option>
+          </select>
+        </div>
       </div>
 
       <div class="wizard-footer">
@@ -101,72 +101,74 @@
         <p class="panel-subtitle" id="step-2-sub">Add the favorite foods, drinks, music, and keepsakes they loved.</p>
       </div>
 
-      <!-- Foods -->
-      <div class="form-group">
-        <label for="input-food" id="lbl-foods">Favorite Foods (up to 12)</label>
-        <div id="chips-foods" class="chip-container"></div>
-        <div class="chip-input-row">
-          <input type="text" id="input-food" maxlength="60" placeholder="e.g. Tamales de mole, Arroz con leche (Press Enter)">
-          <button type="button" id="btn-add-food" class="btn btn-secondary">Add</button>
+      <div class="offerings-grid">
+        <!-- Foods -->
+        <div class="form-group">
+          <label for="input-food" id="lbl-foods">Favorite Foods (up to 12)</label>
+          <div id="chips-foods" class="chip-container"></div>
+          <div class="chip-input-row">
+            <input type="text" id="input-food" maxlength="60" placeholder="e.g. Tamales de mole, Arroz con leche (Press Enter)">
+            <button type="button" id="btn-add-food" class="btn btn-secondary">Add</button>
+          </div>
+          <div class="suggestion-cloud" id="suggest-foods">
+            <span class="suggestion-label" id="lbl-suggest-1">Suggestions:</span>
+            <button type="button" class="suggestion-pill" data-target="food" data-val="Pan de muerto">+ Pan de muerto</button>
+            <button type="button" class="suggestion-pill" data-target="food" data-val="Tamales de mole">+ Tamales de mole</button>
+            <button type="button" class="suggestion-pill" data-target="food" data-val="Arroz con leche">+ Arroz con leche</button>
+            <button type="button" class="suggestion-pill" data-target="food" data-val="Mole negro">+ Mole negro</button>
+            <button type="button" class="suggestion-pill" data-target="food" data-val="Calaveritas de azúcar">+ Calaveritas</button>
+          </div>
         </div>
-        <div class="suggestion-cloud" id="suggest-foods">
-          <span class="suggestion-label" id="lbl-suggest-1">Suggestions:</span>
-          <button type="button" class="suggestion-pill" data-target="food" data-val="Pan de muerto">+ Pan de muerto</button>
-          <button type="button" class="suggestion-pill" data-target="food" data-val="Tamales de mole">+ Tamales de mole</button>
-          <button type="button" class="suggestion-pill" data-target="food" data-val="Arroz con leche">+ Arroz con leche</button>
-          <button type="button" class="suggestion-pill" data-target="food" data-val="Mole negro">+ Mole negro</button>
-          <button type="button" class="suggestion-pill" data-target="food" data-val="Calaveritas de azúcar">+ Calaveritas</button>
-        </div>
-      </div>
 
-      <!-- Drinks -->
-      <div class="form-group">
-        <label for="input-drink" id="lbl-drinks">Favorite Drinks (up to 6)</label>
-        <div id="chips-drinks" class="chip-container"></div>
-        <div class="chip-input-row">
-          <input type="text" id="input-drink" maxlength="60" placeholder="e.g. Café de olla, Atole de vainilla (Press Enter)">
-          <button type="button" id="btn-add-drink" class="btn btn-secondary">Add</button>
+        <!-- Drinks -->
+        <div class="form-group">
+          <label for="input-drink" id="lbl-drinks">Favorite Drinks (up to 6)</label>
+          <div id="chips-drinks" class="chip-container"></div>
+          <div class="chip-input-row">
+            <input type="text" id="input-drink" maxlength="60" placeholder="e.g. Café de olla, Atole de vainilla (Press Enter)">
+            <button type="button" id="btn-add-drink" class="btn btn-secondary">Add</button>
+          </div>
+          <div class="suggestion-cloud" id="suggest-drinks">
+            <span class="suggestion-label" id="lbl-suggest-2">Suggestions:</span>
+            <button type="button" class="suggestion-pill" data-target="drink" data-val="Café de olla">+ Café de olla</button>
+            <button type="button" class="suggestion-pill" data-target="drink" data-val="Atole de vainilla">+ Atole de vainilla</button>
+            <button type="button" class="suggestion-pill" data-target="drink" data-val="Tequila">+ Tequila</button>
+            <button type="button" class="suggestion-pill" data-target="drink" data-val="Agua fresca de jamaica">+ Agua de jamaica</button>
+          </div>
         </div>
-        <div class="suggestion-cloud" id="suggest-drinks">
-          <span class="suggestion-label" id="lbl-suggest-2">Suggestions:</span>
-          <button type="button" class="suggestion-pill" data-target="drink" data-val="Café de olla">+ Café de olla</button>
-          <button type="button" class="suggestion-pill" data-target="drink" data-val="Atole de vainilla">+ Atole de vainilla</button>
-          <button type="button" class="suggestion-pill" data-target="drink" data-val="Tequila">+ Tequila</button>
-          <button type="button" class="suggestion-pill" data-target="drink" data-val="Agua fresca de jamaica">+ Agua de jamaica</button>
-        </div>
-      </div>
 
-      <!-- Songs -->
-      <div class="form-group">
-        <label for="input-song" id="lbl-songs">Songs They Loved (up to 6)</label>
-        <div id="chips-songs" class="chip-container"></div>
-        <div class="chip-input-row">
-          <input type="text" id="input-song" maxlength="60" placeholder="e.g. Cielito Lindo, Amor Eterno (Press Enter)">
-          <button type="button" id="btn-add-song" class="btn btn-secondary">Add</button>
+        <!-- Songs -->
+        <div class="form-group">
+          <label for="input-song" id="lbl-songs">Songs They Loved (up to 6)</label>
+          <div id="chips-songs" class="chip-container"></div>
+          <div class="chip-input-row">
+            <input type="text" id="input-song" maxlength="60" placeholder="e.g. Cielito Lindo, Amor Eterno (Press Enter)">
+            <button type="button" id="btn-add-song" class="btn btn-secondary">Add</button>
+          </div>
+          <div class="suggestion-cloud" id="suggest-songs">
+            <span class="suggestion-label" id="lbl-suggest-3">Suggestions:</span>
+            <button type="button" class="suggestion-pill" data-target="song" data-val="Cielito Lindo">+ Cielito Lindo</button>
+            <button type="button" class="suggestion-pill" data-target="song" data-val="Amor Eterno">+ Amor Eterno</button>
+            <button type="button" class="suggestion-pill" data-target="song" data-val="La Llorona">+ La Llorona</button>
+            <button type="button" class="suggestion-pill" data-target="song" data-val="México Lindo y Querido">+ México Lindo</button>
+          </div>
         </div>
-        <div class="suggestion-cloud" id="suggest-songs">
-          <span class="suggestion-label" id="lbl-suggest-3">Suggestions:</span>
-          <button type="button" class="suggestion-pill" data-target="song" data-val="Cielito Lindo">+ Cielito Lindo</button>
-          <button type="button" class="suggestion-pill" data-target="song" data-val="Amor Eterno">+ Amor Eterno</button>
-          <button type="button" class="suggestion-pill" data-target="song" data-val="La Llorona">+ La Llorona</button>
-          <button type="button" class="suggestion-pill" data-target="song" data-val="México Lindo y Querido">+ México Lindo</button>
-        </div>
-      </div>
 
-      <!-- Objects -->
-      <div class="form-group">
-        <label for="input-object" id="lbl-objects">Keepsakes & Cherished Objects (up to 8)</label>
-        <div id="chips-objects" class="chip-container"></div>
-        <div class="chip-input-row">
-          <input type="text" id="input-object" maxlength="60" placeholder="e.g. Her silver rosary, Gardening gloves (Press Enter)">
-          <button type="button" id="btn-add-object" class="btn btn-secondary">Add</button>
-        </div>
-        <div class="suggestion-cloud" id="suggest-objects">
-          <span class="suggestion-label" id="lbl-suggest-4">Suggestions:</span>
-          <button type="button" class="suggestion-pill" data-target="object" data-val="Rosario de plata">+ Rosario de plata</button>
-          <button type="button" class="suggestion-pill" data-target="object" data-val="Agujas de tejer">+ Agujas de tejer</button>
-          <button type="button" class="suggestion-pill" data-target="object" data-val="Rebozo bordado">+ Rebozo bordado</button>
-          <button type="button" class="suggestion-pill" data-target="object" data-val="Fotografía familiar">+ Foto familiar</button>
+        <!-- Objects -->
+        <div class="form-group">
+          <label for="input-object" id="lbl-objects">Keepsakes & Cherished Objects (up to 8)</label>
+          <div id="chips-objects" class="chip-container"></div>
+          <div class="chip-input-row">
+            <input type="text" id="input-object" maxlength="60" placeholder="e.g. Her silver rosary, Gardening gloves (Press Enter)">
+            <button type="button" id="btn-add-object" class="btn btn-secondary">Add</button>
+          </div>
+          <div class="suggestion-cloud" id="suggest-objects">
+            <span class="suggestion-label" id="lbl-suggest-4">Suggestions:</span>
+            <button type="button" class="suggestion-pill" data-target="object" data-val="Rosario de plata">+ Rosario de plata</button>
+            <button type="button" class="suggestion-pill" data-target="object" data-val="Agujas de tejer">+ Agujas de tejer</button>
+            <button type="button" class="suggestion-pill" data-target="object" data-val="Rebozo bordado">+ Rebozo bordado</button>
+            <button type="button" class="suggestion-pill" data-target="object" data-val="Fotografía familiar">+ Foto familiar</button>
+          </div>
         </div>
       </div>
 
@@ -183,48 +185,54 @@
         <p class="panel-subtitle" id="step-3-sub">Upload a picture and record or write the stories you want to cherish.</p>
       </div>
 
-      <!-- Photo Picker -->
-      <div class="form-group">
-        <label for="input-photo" id="lbl-photo">Portrait Photo</label>
-        <div class="photo-uploader">
-          <div class="photo-preview" id="photo-preview-box">
-            <span class="photo-preview-empty" id="lbl-no-photo">No photo selected</span>
+      <div class="memories-grid">
+        <div class="memories-col">
+          <!-- Photo Picker -->
+          <div class="form-group">
+            <label for="input-photo" id="lbl-photo">Portrait Photo</label>
+            <div class="photo-uploader">
+              <div class="photo-preview" id="photo-preview-box">
+                <span class="photo-preview-empty" id="lbl-no-photo">No photo selected</span>
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <input type="file" id="input-photo" accept="image/png, image/jpeg, image/webp" style="margin-bottom:8px;">
+                <div class="field-hint" id="lbl-photo-hint">Accepted formats: PNG, JPG, WebP. Photo is saved only on your computer.</div>
+              </div>
+            </div>
           </div>
-          <div>
-            <input type="file" id="input-photo" accept="image/png, image/jpeg, image/webp" style="margin-bottom:8px;">
-            <div class="field-hint" id="lbl-photo-hint">Accepted formats: PNG, JPG, WebP. Photo is saved only on your computer.</div>
+
+          <!-- Voice Note Recorder -->
+          <div class="voice-recorder-card">
+            <label id="lbl-record-title">Record a Voice Memory (Transcribed Locally via Whisper)</label>
+            <div class="record-controls">
+              <button type="button" id="btn-record" class="btn btn-secondary">
+                <span>●</span> <span id="lbl-btn-record">Record Voice Note</span>
+              </button>
+              <button type="button" id="btn-stop-record" class="btn btn-danger" style="display:none;">
+                ■ <span id="lbl-btn-stop">Stop Recording</span>
+              </button>
+              <span id="record-timer" class="record-timer" style="display:none;">00:00</span>
+              <span id="record-status-msg" class="field-hint"></span>
+            </div>
+            <canvas id="record-wave-canvas" class="audio-visualizer-canvas" width="600" height="60" style="display:none;"></canvas>
+            <div id="mic-gentle-msg" class="field-hint" style="margin-top:8px;"></div>
           </div>
         </div>
-      </div>
 
-      <!-- Typed Story -->
-      <div class="form-group">
-        <label for="textarea-story" id="lbl-stories">Written Memories & Stories</label>
-        <textarea id="textarea-story" maxlength="5000" placeholder="Write any memories, anecdotes, or what you loved most about them..."></textarea>
-      </div>
+        <div class="memories-col">
+          <!-- Typed Story -->
+          <div class="form-group">
+            <label for="textarea-story" id="lbl-stories">Written Memories & Stories</label>
+            <textarea id="textarea-story" maxlength="5000" placeholder="Write any memories, anecdotes, or what you loved most about them..."></textarea>
+          </div>
 
-      <!-- Voice Note Recorder -->
-      <div class="voice-recorder-card">
-        <label id="lbl-record-title">Record a Voice Memory (Transcribed Locally via Whisper)</label>
-        <div class="record-controls">
-          <button type="button" id="btn-record" class="btn btn-secondary">
-            <span>●</span> <span id="lbl-btn-record">Record Voice Note</span>
-          </button>
-          <button type="button" id="btn-stop-record" class="btn btn-danger" style="display:none;">
-            ■ <span id="lbl-btn-stop">Stop Recording</span>
-          </button>
-          <span id="record-timer" class="record-timer" style="display:none;">00:00</span>
-          <span id="record-status-msg" class="field-hint"></span>
+          <!-- Editable Transcript Box -->
+          <div class="form-group">
+            <label for="textarea-transcript" id="lbl-transcript">Spoken Memories (Voice Note Transcript)</label>
+            <textarea id="textarea-transcript" placeholder="Transcribed text will appear here. You can freely edit or expand upon it before finalizing."></textarea>
+            <div class="field-hint" id="lbl-transcript-hint">Whisper transcribes speech locally on your laptop without sending voice data anywhere.</div>
+          </div>
         </div>
-        <canvas id="record-wave-canvas" class="audio-visualizer-canvas" width="600" height="60" style="display:none;"></canvas>
-        <div id="mic-gentle-msg" class="field-hint" style="margin-top:8px;"></div>
-      </div>
-
-      <!-- Editable Transcript Box -->
-      <div class="form-group">
-        <label for="textarea-transcript" id="lbl-transcript">Spoken Memories (Voice Note Transcript)</label>
-        <textarea id="textarea-transcript" placeholder="Transcribed text will appear here. You can freely edit or expand upon it before finalizing."></textarea>
-        <div class="field-hint" id="lbl-transcript-hint">Whisper transcribes speech locally on your laptop without sending voice data anywhere.</div>
       </div>
 
       <div class="wizard-footer">
@@ -240,163 +248,175 @@
         <p class="panel-subtitle" id="step-4-sub">Generate a warm remembrance using a local AI model and view the completed altar.</p>
       </div>
 
-      <!-- Model Picker & Generate Bar -->
-      <div class="form-row" style="align-items: flex-end; margin-bottom: 20px;">
-        <div class="form-group" style="max-width: 280px;">
-          <label for="select-model" id="lbl-model">Local AI Model (Ollama)</label>
-          <select id="select-model">
-            <option value="llama3.2:3b">llama3.2:3b (Default)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <button type="button" id="btn-generate" class="btn btn-primary" style="min-width: 220px;">
-            <span id="btn-generate-text">Generate Remembrance</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Loading Candle Status -->
-      <div id="generate-loading" style="display:none; margin: 16px 0; color: var(--candle-gold); font-style: italic;">
-        🕯️ <span id="loading-message">Lighting the candles...</span>
-      </div>
-
-      <!-- Editable Remembrance Box -->
-      <div class="form-group">
-        <label for="textarea-remembrance" id="lbl-remembrance">Altar Remembrance (Editable)</label>
-        <textarea id="textarea-remembrance" style="min-height: 140px;" placeholder="The generated remembrance will appear here. Feel free to revise any words before saving."></textarea>
-        <div style="margin-top: 8px;">
-          <button type="button" id="btn-save-remembrance" class="btn btn-secondary" style="font-size:0.9rem;">
-            Save Edits to Remembrance
-          </button>
-          <span id="remembrance-saved-msg" class="field-hint" style="color:var(--success); margin-left:12px;"></span>
-        </div>
-      </div>
-
-      <!-- Optional Memorial Voice Recreation Section -->
-      <section class="voice-card" id="voice-card" aria-labelledby="lbl-voice-title">
-        <div class="voice-card-header">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:1.3rem;">🎙️</span>
-            <div>
-              <h2 id="lbl-voice-title" class="voice-title">Memorial Voice Recreation (Optional Local AI Speech)</h2>
-              <p id="lbl-voice-desc" class="field-hint" style="margin:2px 0 0 0;">
-                Synthesize spoken audio of the remembrance using a family-authorized voice reference.
-              </p>
+      <div class="step4-workspace">
+        <div class="step4-controls-col">
+          <!-- Model Picker & Generate Bar -->
+          <div class="form-row" style="align-items: flex-end; margin-bottom: 20px;">
+            <div class="form-group" style="min-width: 200px; flex: 1;">
+              <label for="select-model" id="lbl-model">Local AI Model (Ollama)</label>
+              <select id="select-model">
+                <option value="llama3.2:3b">llama3.2:3b (Default)</option>
+              </select>
+            </div>
+            <div class="form-group" style="min-width: 220px; flex: 1;">
+              <button type="button" id="btn-generate" class="btn btn-primary" style="width: 100%;">
+                <span id="btn-generate-text">Generate Remembrance</span>
+              </button>
             </div>
           </div>
-          <span id="voice-engine-badge" class="voice-badge-tag">Local Engine Ready</span>
-        </div>
 
-        <!-- Ethical Consent Notice -->
-        <div class="voice-notice">
-          <strong>⚠️ Memorial Simulation Notice & Consent Requirement</strong>
-          <p id="lbl-voice-ethical-notice">
-            Voice recreation produces an AI simulation for remembrance purposes only. The synthesized speech must never be presented as words actually spoken by the deceased. Explicit permission from the family is required.
-          </p>
-          <div class="voice-consent-form">
-            <div class="form-group" style="margin-bottom:8px;">
-              <label for="input-voice-auth" id="lbl-voice-auth">Authorizing Family Member *</label>
-              <input type="text" id="input-voice-auth" maxlength="100" placeholder="e.g. Maria Hernandez (Daughter)">
-            </div>
-            <label class="consent-checkbox-label">
-              <input type="checkbox" id="check-voice-consent">
-              <span id="lbl-voice-consent">I confirm that I have explicit family permission to synthesize a memorial voice recreation for this ofrenda.</span>
-            </label>
+          <!-- Loading Candle Status -->
+          <div id="generate-loading" style="display:none; margin: 16px 0; color: var(--candle-gold); font-style: italic;">
+            🕯️ <span id="loading-message">Lighting the candles...</span>
           </div>
-        </div>
 
-        <!-- Voice Reference Audio Source -->
-        <div class="form-row" style="margin-top:16px; align-items:flex-end;">
-          <div class="form-group" style="flex:1;">
-            <label for="input-voice-ref" id="lbl-voice-ref">Reference Voice Recording (WAV, MP3, M4A, WebM)</label>
-            <input type="file" id="input-voice-ref" accept="audio/*">
-            <div id="voice-ref-status" class="field-hint" style="margin-top:4px;">No reference voice loaded yet.</div>
-          </div>
-          <div class="form-group" style="margin-bottom:12px;">
-            <button type="button" id="btn-use-step3-audio" class="btn btn-secondary" style="font-size:0.85rem;" title="Use the audio recorded in Step 3">
-              Use Step 3 Voice Note
-            </button>
-          </div>
-        </div>
-
-        <!-- Voice Synthesis Settings & Trigger -->
-        <div class="form-row" style="align-items:flex-end; margin-top:8px;">
-          <div class="form-group" style="max-width:200px;">
-            <label for="select-voice-lang" id="lbl-voice-lang">Voice Language</label>
-            <select id="select-voice-lang">
-              <option value="es" selected>Español (es)</option>
-              <option value="en">English (en)</option>
-              <option value="fr">Français (fr)</option>
-              <option value="de">Deutsch (de)</option>
-              <option value="it">Italiano (it)</option>
-              <option value="pt">Português (pt)</option>
-            </select>
-          </div>
+          <!-- Editable Remembrance Box -->
           <div class="form-group">
-            <button type="button" id="btn-synthesize-voice" class="btn btn-primary" style="min-width:230px;">
-              <span id="btn-synth-text">Synthesize Memorial Voice</span>
+            <label for="textarea-remembrance" id="lbl-remembrance">Altar Remembrance (Editable)</label>
+            <textarea id="textarea-remembrance" style="min-height: 140px;" placeholder="The generated remembrance will appear here. Feel free to revise any words before saving."></textarea>
+            <div style="margin-top: 8px;">
+              <button type="button" id="btn-save-remembrance" class="btn btn-secondary" style="font-size:0.9rem;">
+                Save Edits to Remembrance
+              </button>
+              <span id="remembrance-saved-msg" class="field-hint" style="color:var(--success); margin-left:12px;"></span>
+            </div>
+          </div>
+
+          <!-- Optional Memorial Voice Recreation Section -->
+          <section class="voice-card" id="voice-card" aria-labelledby="lbl-voice-title">
+            <div class="voice-card-header">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.3rem;">🎙️</span>
+                <div>
+                  <h2 id="lbl-voice-title" class="voice-title">Memorial Voice Recreation (Optional Local AI Speech)</h2>
+                  <p id="lbl-voice-desc" class="field-hint" style="margin:2px 0 0 0;">
+                    Synthesize spoken audio of the remembrance using a family-authorized voice reference.
+                  </p>
+                </div>
+              </div>
+              <span id="voice-engine-badge" class="voice-badge-tag">Local Engine Ready</span>
+            </div>
+
+            <!-- Ethical Consent Notice -->
+            <div class="voice-notice">
+              <strong>⚠️ Memorial Simulation Notice & Consent Requirement</strong>
+              <p id="lbl-voice-ethical-notice">
+                Voice recreation produces an AI simulation for remembrance purposes only. The synthesized speech must never be presented as words actually spoken by the deceased. Explicit permission from the family is required.
+              </p>
+              <div class="voice-consent-form">
+                <div class="form-group" style="margin-bottom:8px;">
+                  <label for="input-voice-auth" id="lbl-voice-auth">Authorizing Family Member *</label>
+                  <input type="text" id="input-voice-auth" maxlength="100" placeholder="e.g. Maria Hernandez (Daughter)">
+                </div>
+                <label class="consent-checkbox-label">
+                  <input type="checkbox" id="check-voice-consent">
+                  <span id="lbl-voice-consent">I confirm that I have explicit family permission to synthesize a memorial voice recreation for this ofrenda.</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Voice Reference Audio Source -->
+            <div class="form-row" style="margin-top:16px; align-items:flex-end;">
+              <div class="form-group" style="flex:1;">
+                <label for="input-voice-ref" id="lbl-voice-ref">Reference Voice Recording (WAV, MP3, M4A, WebM)</label>
+                <input type="file" id="input-voice-ref" accept="audio/*">
+                <div id="voice-ref-status" class="field-hint" style="margin-top:4px;">No reference voice loaded yet.</div>
+              </div>
+              <div class="form-group" style="margin-bottom:12px;">
+                <button type="button" id="btn-use-step3-audio" class="btn btn-secondary" style="font-size:0.85rem;" title="Use the audio recorded in Step 3">
+                  Use Step 3 Voice Note
+                </button>
+              </div>
+            </div>
+
+            <!-- Voice Synthesis Settings & Trigger -->
+            <div class="form-row" style="align-items:flex-end; margin-top:8px;">
+              <div class="form-group" style="min-width:160px; flex:1; max-width:260px;">
+                <label for="select-voice-lang" id="lbl-voice-lang">Voice Language</label>
+                <select id="select-voice-lang">
+                  <option value="es" selected>Español (es)</option>
+                  <option value="en">English (en)</option>
+                  <option value="fr">Français (fr)</option>
+                  <option value="de">Deutsch (de)</option>
+                  <option value="it">Italiano (it)</option>
+                  <option value="pt">Português (pt)</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <button type="button" id="btn-synthesize-voice" class="btn btn-primary" style="min-width:210px; width:100%;">
+                  <span id="btn-synth-text">Synthesize Memorial Voice</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Loading Voice Status -->
+            <div id="voice-loading" style="display:none; margin:14px 0; color:var(--candle-gold); font-style:italic;">
+              🕯️ <span id="voice-loading-message">Synthesizing memorial voice locally... This may take a moment.</span>
+            </div>
+
+            <!-- Result / Player Preview Card -->
+            <div id="voice-result-box" style="display:none; margin-top:16px;" class="voice-result-box">
+              <div class="voice-badge">
+                <span class="voice-badge-icon">⚠️</span>
+                <span class="voice-badge-text" id="lbl-voice-badge-banner">
+                  AI-Generated Voice Recreation &bull; Memorial Simulation Only (Not spoken by the deceased)
+                </span>
+              </div>
+              <div style="margin:10px 0;">
+                <audio id="voice-audio-player" controls style="width:100%;"></audio>
+                <canvas id="voice-spectrum-canvas" class="audio-visualizer-canvas" width="600" height="46" style="display:none;"></canvas>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                <button type="button" id="btn-download-voice" class="btn btn-secondary" style="font-size:0.85rem;">
+                  📥 Download Voice (.wav)
+                </button>
+                <button type="button" id="btn-delete-voice" class="btn btn-danger" style="font-size:0.85rem; padding:6px 12px; min-height:36px;">
+                  Remove Voice
+                </button>
+                <span id="voice-duration-info" class="field-hint" style="color:var(--text-muted);"></span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Action Toolbar -->
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px 0;">
+            <button type="button" id="btn-download-html" class="btn btn-primary">
+              📥 Download HTML File
+            </button>
+            <button type="button" id="btn-print-pdf" class="btn btn-secondary">
+              🖨️ Print or Save as PDF
+            </button>
+            <button type="button" id="btn-regenerate" class="btn btn-secondary">
+              🔄 Regenerate
             </button>
           </div>
         </div>
 
-        <!-- Loading Voice Status -->
-        <div id="voice-loading" style="display:none; margin:14px 0; color:var(--candle-gold); font-style:italic;">
-          🕯️ <span id="voice-loading-message">Synthesizing memorial voice locally... This may take a moment.</span>
-        </div>
-
-        <!-- Result / Player Preview Card -->
-        <div id="voice-result-box" style="display:none; margin-top:16px;" class="voice-result-box">
-          <div class="voice-badge">
-            <span class="voice-badge-icon">⚠️</span>
-            <span class="voice-badge-text" id="lbl-voice-badge-banner">
-              AI-Generated Voice Recreation &bull; Memorial Simulation Only (Not spoken by the deceased)
-            </span>
+        <div class="step4-preview-col">
+          <!-- Live Preview Iframe with Stage Header -->
+          <div class="preview-stage-header">
+            <div class="preview-stage-title">
+              <span>🕯️</span> <span id="lbl-preview-title">Live Altar Stage Preview</span>
+            </div>
+            <div>
+              <button type="button" id="btn-fullscreen-preview" class="btn btn-secondary" style="font-size:0.88rem; min-height:36px; padding:6px 14px;" title="Full Altar Experience">
+                ⛶ <span id="lbl-btn-fullscreen">Full Altar View</span>
+              </button>
+            </div>
           </div>
-          <div style="margin:10px 0;">
-            <audio id="voice-audio-player" controls style="width:100%;"></audio>
-            <canvas id="voice-spectrum-canvas" class="audio-visualizer-canvas" width="600" height="46" style="display:none;"></canvas>
-          </div>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-            <button type="button" id="btn-download-voice" class="btn btn-secondary" style="font-size:0.85rem;">
-              📥 Download Voice (.wav)
-            </button>
-            <button type="button" id="btn-delete-voice" class="btn btn-danger" style="font-size:0.85rem; padding:6px 12px; min-height:36px;">
-              Remove Voice
-            </button>
-            <span id="voice-duration-info" class="field-hint" style="color:var(--text-muted);"></span>
-          </div>
-        </div>
-      </section>
 
-      <!-- Action Toolbar -->
-      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px 0;">
-        <button type="button" id="btn-download-html" class="btn btn-primary">
-          📥 Download HTML File
-        </button>
-        <button type="button" id="btn-print-pdf" class="btn btn-secondary">
-          🖨️ Print or Save as PDF
-        </button>
-        <button type="button" id="btn-regenerate" class="btn btn-secondary">
-          🔄 Regenerate
-        </button>
-      </div>
-
-      <!-- Live Preview Iframe with Stage Header -->
-      <div class="preview-stage-header">
-        <div class="preview-stage-title">
-          <span>🕯️</span> <span id="lbl-preview-title">Live Altar Stage Preview</span>
-        </div>
-        <div>
-          <button type="button" id="btn-fullscreen-preview" class="btn btn-secondary" style="font-size:0.88rem; min-height:36px; padding:6px 14px;" title="Full Altar Experience">
-            ⛶ <span id="lbl-btn-fullscreen">Full Altar View</span>
-          </button>
+          <div class="preview-iframe-wrapper" id="preview-wrapper">
+            <iframe id="preview-iframe" class="preview-iframe" title="Ofrenda Altar Preview"></iframe>
+          </div>
+          <button type="button" id="btn-close-fullscreen" class="btn-close-fullscreen" title="Close Fullscreen">&times;</button>
         </div>
       </div>
 
-      <div class="preview-iframe-wrapper" id="preview-wrapper">
-        <iframe id="preview-iframe" class="preview-iframe" title="Ofrenda Altar Preview"></iframe>
+      <div class="wizard-footer">
+        <button id="btn-back-4" class="btn btn-secondary">&larr; Back</button>
+        <button id="btn-start-new" class="btn btn-secondary">+ Create Another Ofrenda</button>
       </div>
-      <button type="button" id="btn-close-fullscreen" class="btn-close-fullscreen" title="Close Fullscreen">&times;</button>
+    </section>
 
       <div class="wizard-footer">
         <button id="btn-back-4" class="btn btn-secondary">&larr; Back</button>
