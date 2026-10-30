@@ -4,7 +4,6 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
-    HF_HUB_OFFLINE=1 \
     OLLAMA_HOST=http://host.docker.internal:11434 \
     WHISPER_MODEL=base
 
@@ -22,8 +21,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Pre-download and cache faster-whisper model so container starts 100% offline
-RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
+# Pre-download and cache faster-whisper model so container can run 100% offline
+RUN HF_HUB_OFFLINE=0 python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
+
+# Enforce strictly offline Hugging Face Hub mode for runtime container
+ENV HF_HUB_OFFLINE=1
 
 # Copy application source code
 COPY app/ ./app/
