@@ -1,10 +1,65 @@
-"""Pydantic models and validation schemas for ofrendas."""
+"""Pydantic models and validation schemas for ofrendas and optional voice recreation."""
 
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 import uuid
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class VoiceConsentRecord(BaseModel):
+    """Certified family permission record required for voice recreation."""
+
+    authorized_by: str = Field(..., min_length=1, max_length=100)
+    confirmed_permission: bool = Field(..., description="Explicit affirmative family consent")
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    statement: str = Field(
+        default="I certify that I have explicit family authorization to generate an AI voice recreation for memorial purposes."
+    )
+
+    @field_validator("confirmed_permission")
+    def must_be_true(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Affirmative family authorization is strictly required for voice recreation.")
+        return v
+
+
+class VoiceProfileMetadata(BaseModel):
+    """Metadata regarding local voice recreation state and provenance."""
+
+    has_reference: bool = False
+    reference_filename: Optional[str] = None
+    reference_duration_s: Optional[float] = None
+    has_synthesized_audio: bool = False
+    synthesized_filename: Optional[str] = None
+    synthesized_duration_s: Optional[float] = None
+    model_used: Optional[str] = None
+    language: Optional[str] = None
+    synthesized_at: Optional[str] = None
+    watermark_label: str = "AI-Generated Voice Recreation - Memorial Simulation Only"
+    authorized_by: Optional[str] = None
+
+
+class VoiceSynthesisRequest(BaseModel):
+    """Request payload to synthesize remembrance speech."""
+
+    language: Literal["en", "es", "fr", "de", "it", "pt"] = "es"
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    consent: Optional[VoiceConsentRecord] = None
+    authorized_by: Optional[str] = None
+    confirmed_permission: Optional[bool] = None
+    engine: Optional[str] = None
+
+    @model_validator(mode="after")
+    def resolve_consent(self) -> "VoiceSynthesisRequest":
+        if self.consent is None:
+            if not self.authorized_by or not self.confirmed_permission:
+                raise ValueError("Both authorized_by and confirmed_permission=True are required.")
+            self.consent = VoiceConsentRecord(
+                authorized_by=self.authorized_by,
+                confirmed_permission=self.confirmed_permission,
+            )
+        return self
 
 
 class OfrendaCreate(BaseModel):
@@ -53,6 +108,7 @@ class OfrendaUpdate(BaseModel):
     remembrance: Optional[str] = None
     generated_by: Optional[str] = None
     model_used: Optional[str] = None
+    voice_profile: Optional[VoiceProfileMetadata] = None
 
     @field_validator("name")
     def name_not_blank(cls, v: Optional[str]) -> Optional[str]:
@@ -92,6 +148,7 @@ class OfrendaRecord(BaseModel):
     remembrance: Optional[str] = None
     generated_by: Optional[str] = None
     model_used: Optional[str] = None
+    voice_profile: Optional[VoiceProfileMetadata] = None
 
 
 class OfrendaSummary(BaseModel):
@@ -102,6 +159,7 @@ class OfrendaSummary(BaseModel):
     created_at: str
     relationship: Optional[str] = None
     photo: Optional[str] = None
+    has_voice: bool = False
 
 
 class GenerateRequest(BaseModel):

@@ -27,3 +27,23 @@ This document records architectural decisions, assumptions, and simplifications 
 ### 6. SVG Without XMLNS Namespace
 - **Decision:** Omit `xmlns="http://www.w3.org/2000/svg"` attribute from inline SVG elements within the HTML altar page.
 - **Reason:** Modern HTML5 parses inline SVG elements natively without needing the XML namespace URI. Omitting `http://` prevents false positives during strict offline security scans.
+
+### 7. Voice Synthesis Engine Selection & Licensing (XTTS-v2 & OpenVoice V2)
+- **Decision:** Design an engine adapter interface supporting **Coqui XTTS-v2** as the primary high-fidelity model and **OpenVoice V2** as the lightweight CPU-friendly alternative.
+- **Reason:** XTTS-v2 natively supports 17 languages including Spanish (`es`) and English (`en`) with excellent prosody from short reference clips. XTTS-v2 is licensed under the Coqui Public Model License (CPML), which permits non-commercial personal use. OpenVoice V2 (CC BY-NC 4.0) offers a faster, lower-memory alternative for CPU-only systems.
+
+### 8. Strict Family Authorization & Anti-Deception Guardrails
+- **Decision:** Require affirmative family consent records for voice synthesis and mandate prominent watermarking and labeling on all synthetic audio outputs.
+- **Reason:** Simulating the voice of a deceased relative carries deep emotional and ethical sensitivity. The system must never permit unauthorized cloning or create the illusion that the deceased spoke words they never uttered. Authentic voice recordings ("In their own words") remain strictly distinct from synthetic readings ("AI Voice Reading of Remembrance").
+
+### 9. Local-Only Audio Storage Hierarchy
+- **Decision:** Store voice reference recordings, speaker embeddings/latents, and generated audio inside `data/ofrendas/<id>/voice/` on the local machine.
+- **Reason:** Enforces zero cloud leakage and complies with the project's strict offline architecture. Speaker profiles are cached locally to avoid re-computing conditioning latents on subsequent generation requests.
+
+### 10. Decoupled Service Boundary with Mock Testing
+- **Decision:** Decouple the voice synthesis service behind a `VoiceSynthesisEngine` abstraction, providing a bundled `MockVoiceEngine` for test suites.
+- **Reason:** Heavy deep-learning packages (PyTorch, torchaudio, TTS) and multi-gigabyte checkpoints would cause test bloat and prevent tests from running in seconds on standard developer machines. The mock engine allows verifying API contracts, consent gating, and storage workflows instantly.
+
+### 11. Dependency Separation via `requirements-voice.txt`
+- **Decision:** Keep `requirements.txt` lightweight for the core MVP application and place voice synthesis dependencies into an optional `requirements-voice.txt`.
+- **Reason:** Ensures the core app can be cloned and run on any machine in under 60 seconds without forcing users to install 2+ GB of PyTorch and TTS packages if they do not intend to use the voice recreation feature.

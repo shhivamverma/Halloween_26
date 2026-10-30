@@ -1,0 +1,10 @@
+# Optional dependencies for Local AI Voice Recreation feature
+# Install only if enabling offline voice synthesis:
+#   pip install -r requirements-voice.txt
+
+torch>=2.2.0
+torchaudio>=2.2.0
+TTS>=0.22.0
+soundfile>=0.12.1
+scipy>=1.11.0
+

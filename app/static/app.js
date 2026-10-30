@@ -64,6 +64,21 @@ const I18N = {
     micDenied: "Microphone access is unavailable or was denied. You can type memories directly above.",
     micRecording: "Recording in progress...",
     micProcessing: "Transcribing locally with Whisper...",
+    lblVoiceTitle: "Memorial Voice Recreation (Optional AI Speech)",
+    lblVoiceDesc: "Synthesize spoken audio of the remembrance using a family-authorized voice reference.",
+    lblVoiceEthicalNotice: "Voice recreation produces an AI simulation for remembrance purposes only. The synthesized speech must never be presented as words actually spoken by the deceased. Explicit permission from the family is required.",
+    lblVoiceAuth: "Authorizing Family Member *",
+    lblVoiceConsent: "I confirm that I have explicit family permission to synthesize a memorial voice recreation for this ofrenda.",
+    lblVoiceRef: "Reference Voice Recording (WAV, MP3, M4A, WebM)",
+    btnUseStep3Audio: "Use Step 3 Voice Note",
+    lblVoiceLang: "Voice Language",
+    btnSynthText: "Synthesize Memorial Voice",
+    voiceLoading: "Synthesizing memorial voice locally... This may take a moment.",
+    btnDownloadVoice: "📥 Download Voice (.wav)",
+    btnDeleteVoice: "Remove Voice",
+    voiceBadgeBanner: "AI-Generated Voice Recreation • Memorial Simulation Only (Not spoken by the deceased)",
+    voiceRefStatusLoaded: "✓ Reference voice loaded",
+    voiceRefStatusNone: "No reference voice loaded yet.",
   },
   es: {
     brandTitle: "Guardián de Ofrendas",
@@ -109,6 +124,21 @@ const I18N = {
     micDenied: "El micrófono no está disponible o el permiso fue denegado. Puedes escribir anécdotas arriba.",
     micRecording: "Grabando memoria...",
     micProcessing: "Transcribiendo localmente con Whisper...",
+    lblVoiceTitle: "Recreación de Voz Memorial (Voz IA Opcional)",
+    lblVoiceDesc: "Sintetiza la lectura hablada del recuerdo usando una referencia autorizada por la familia.",
+    lblVoiceEthicalNotice: "La recreación de voz produce una simulación con IA solo para fines de memoria. La voz sintetizada nunca debe presentarse como palabras dichas por la persona fallecida. Se requiere autorización explícita de la familia.",
+    lblVoiceAuth: "Familiar que Autoriza *",
+    lblVoiceConsent: "Confirmo que cuento con permiso explícito de la familia para sintetizar una recreación de voz memorial para esta ofrenda.",
+    lblVoiceRef: "Grabación de Voz de Referencia (WAV, MP3, M4A, WebM)",
+    btnUseStep3Audio: "Usar Nota de Voz del Paso 3",
+    lblVoiceLang: "Idioma de la Voz",
+    btnSynthText: "Sintetizar Voz Memorial",
+    voiceLoading: "Sintetizando voz memorial localmente... Esto puede tomar un momento.",
+    btnDownloadVoice: "📥 Descargar Voz (.wav)",
+    btnDeleteVoice: "Eliminar Voz",
+    voiceBadgeBanner: "Recreación de Voz con IA • Solo Simulación Memorial (No fue hablado por la persona fallecida)",
+    voiceRefStatusLoaded: "✓ Voz de referencia cargada",
+    voiceRefStatusNone: "Aún no se ha cargado una voz de referencia.",
   },
 };
 
@@ -183,6 +213,22 @@ const elements = {
   previewIframe: document.getElementById("preview-iframe"),
   btnBack4: document.getElementById("btn-back-4"),
   btnStartNew: document.getElementById("btn-start-new"),
+  // Voice Recreation
+  voiceCard: document.getElementById("voice-card"),
+  inputVoiceAuth: document.getElementById("input-voice-auth"),
+  checkVoiceConsent: document.getElementById("check-voice-consent"),
+  inputVoiceRef: document.getElementById("input-voice-ref"),
+  btnUseStep3Audio: document.getElementById("btn-use-step3-audio"),
+  voiceRefStatus: document.getElementById("voice-ref-status"),
+  selectVoiceLang: document.getElementById("select-voice-lang"),
+  btnSynthesizeVoice: document.getElementById("btn-synthesize-voice"),
+  voiceLoading: document.getElementById("voice-loading"),
+  voiceResultBox: document.getElementById("voice-result-box"),
+  voiceAudioPlayer: document.getElementById("voice-audio-player"),
+  btnDownloadVoice: document.getElementById("btn-download-voice"),
+  btnDeleteVoice: document.getElementById("btn-delete-voice"),
+  voiceDurationInfo: document.getElementById("voice-duration-info"),
+  voiceEngineBadge: document.getElementById("voice-engine-badge"),
 };
 
 // Update UI Language
@@ -228,6 +274,23 @@ function setLanguage(lang) {
   elements.btnPrintPdf.textContent = t.btnPrint;
   elements.btnRegenerate.textContent = t.btnRegenerate;
   document.getElementById("drawer-title").textContent = t.drawerTitle;
+
+  // Voice Recreation I18N
+  if (document.getElementById("lbl-voice-title")) {
+    document.getElementById("lbl-voice-title").textContent = t.lblVoiceTitle;
+    document.getElementById("lbl-voice-desc").textContent = t.lblVoiceDesc;
+    document.getElementById("lbl-voice-ethical-notice").textContent = t.lblVoiceEthicalNotice;
+    document.getElementById("lbl-voice-auth").textContent = t.lblVoiceAuth;
+    document.getElementById("lbl-voice-consent").textContent = t.lblVoiceConsent;
+    document.getElementById("lbl-voice-ref").textContent = t.lblVoiceRef;
+    elements.btnUseStep3Audio.textContent = t.btnUseStep3Audio;
+    document.getElementById("lbl-voice-lang").textContent = t.lblVoiceLang;
+    document.getElementById("btn-synth-text").textContent = t.btnSynthText;
+    document.getElementById("voice-loading-message").textContent = t.voiceLoading;
+    document.getElementById("lbl-voice-badge-banner").textContent = t.voiceBadgeBanner;
+    elements.btnDownloadVoice.textContent = t.btnDownloadVoice;
+    elements.btnDeleteVoice.textContent = t.btnDeleteVoice;
+  }
 }
 
 // Health Check & Model Discovery
@@ -242,6 +305,15 @@ async function checkHealth() {
       elements.statusText.textContent = I18N[state.language].statusOnline;
     } else {
       elements.statusText.textContent = I18N[state.language].statusOllamaDown;
+    }
+
+    if (data.voice && elements.voiceEngineBadge) {
+      if (data.voice.available) {
+        elements.voiceEngineBadge.textContent = `${data.voice.active_engine} (Local)`;
+        elements.voiceEngineBadge.style.color = "var(--candle-gold)";
+      } else {
+        elements.voiceEngineBadge.textContent = "Voice Module Standby";
+      }
     }
 
     // Populate model selector if models returned
@@ -601,6 +673,191 @@ function updatePreviewIframe() {
   }
 }
 
+// Step 4: Optional Voice Recreation Handlers
+async function handleVoiceRefSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const authName = elements.inputVoiceAuth.value.trim();
+  const consent = elements.checkVoiceConsent.checked;
+
+  if (!authName || !consent) {
+    alert(
+      state.language === "es"
+        ? "Por favor ingrese el nombre del familiar que autoriza y marque la casilla de consentimiento antes de subir el audio de referencia."
+        : "Please enter the authorizing family member's name and check the permission box before uploading reference audio."
+    );
+    e.target.value = "";
+    return;
+  }
+
+  if (!state.currentOfrendaId) {
+    await saveStep1();
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("authorized_by", authName);
+  formData.append("confirmed_permission", "true");
+
+  try {
+    const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/reference`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || err.detail || "Failed to upload reference audio");
+    }
+    elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
+    elements.voiceRefStatus.style.color = "var(--success)";
+  } catch (err) {
+    alert("Reference upload error: " + err.message);
+  }
+}
+
+async function handleUseStep3Audio() {
+  const authName = elements.inputVoiceAuth.value.trim();
+  const consent = elements.checkVoiceConsent.checked;
+
+  if (!authName || !consent) {
+    alert(
+      state.language === "es"
+        ? "Por favor ingrese el nombre del familiar que autoriza y marque la casilla de consentimiento primero."
+        : "Please enter the authorizing family member's name and check the permission box first."
+    );
+    return;
+  }
+
+  if (state.audioChunks.length === 0) {
+    alert(
+      state.language === "es"
+        ? "No hay una grabación de audio reciente en el Paso 3. Puede subir un archivo de audio directamente o grabar una nota en el Paso 3."
+        : "No recent voice recording found in Step 3. You can upload an audio file directly or record one in Step 3."
+    );
+    return;
+  }
+
+  if (!state.currentOfrendaId) {
+    await saveStep1();
+  }
+
+  const audioBlob = new Blob(state.audioChunks, { type: "audio/webm" });
+  const formData = new FormData();
+  formData.append("file", audioBlob, "step3_voice_reference.webm");
+  formData.append("authorized_by", authName);
+  formData.append("confirmed_permission", "true");
+
+  try {
+    const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/reference`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || err.detail || "Failed to use Step 3 audio");
+    }
+    elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
+    elements.voiceRefStatus.style.color = "var(--success)";
+  } catch (err) {
+    alert("Audio error: " + err.message);
+  }
+}
+
+async function synthesizeVoice() {
+  if (!state.currentOfrendaId) {
+    alert(state.language === "es" ? "Cree una ofrenda primero." : "Please create an ofrenda first.");
+    return;
+  }
+
+  const authName = elements.inputVoiceAuth.value.trim();
+  const consent = elements.checkVoiceConsent.checked;
+
+  if (!consent || !authName) {
+    alert(
+      state.language === "es"
+        ? "Debe confirmar el permiso familiar e ingresar el nombre del familiar autorizante."
+        : "You must confirm family permission and enter the authorizing family member's name."
+    );
+    return;
+  }
+
+  const remembranceText = elements.textareaRemembrance.value.trim();
+  if (!remembranceText) {
+    alert(
+      state.language === "es"
+        ? "Primero debe generar o escribir un recuerdo para el altar."
+        : "Please generate or write an altar remembrance first."
+    );
+    return;
+  }
+
+  // Ensure any remembrance edits are persisted
+  await saveRemembranceEdits();
+
+  elements.btnSynthesizeVoice.disabled = true;
+  elements.voiceLoading.style.display = "block";
+
+  try {
+    const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/synthesize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        authorized_by: authName,
+        confirmed_permission: true,
+        language: elements.selectVoiceLang.value,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || err.error || "Voice synthesis failed");
+    }
+
+    const data = await res.json();
+
+    elements.voiceResultBox.style.display = "block";
+    elements.voiceAudioPlayer.src = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
+    if (data.synthesized_duration_s) {
+      elements.voiceDurationInfo.textContent = `Duration: ${data.synthesized_duration_s.toFixed(1)}s • Model: ${data.model_used || "Local"}`;
+    }
+
+    updatePreviewIframe();
+  } catch (err) {
+    alert("Voice synthesis error: " + err.message);
+  } finally {
+    elements.btnSynthesizeVoice.disabled = false;
+    elements.voiceLoading.style.display = "none";
+  }
+}
+
+function downloadSynthesizedVoice() {
+  if (!state.currentOfrendaId) return;
+  window.location.href = `/api/ofrendas/${state.currentOfrendaId}/voice/download`;
+}
+
+async function deleteVoice() {
+  if (!state.currentOfrendaId) return;
+  if (!confirm(state.language === "es" ? "¿Eliminar la recreación de voz y grabaciones de referencia?" : "Remove synthesized voice recreation and reference files?")) return;
+
+  try {
+    const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      elements.voiceResultBox.style.display = "none";
+      elements.voiceAudioPlayer.src = "";
+      elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusNone;
+      elements.voiceRefStatus.style.color = "var(--text-muted)";
+      elements.inputVoiceRef.value = "";
+      elements.voiceDurationInfo.textContent = "";
+      updatePreviewIframe();
+    }
+  } catch (err) {
+    alert("Failed to delete voice: " + err.message);
+  }
+}
+
 // Drawer: Saved Ofrendas
 async function loadSavedOfrendas() {
   try {
@@ -686,6 +943,44 @@ async function openSavedOfrenda(id) {
       elements.photoPreviewBox.innerHTML = `<img src="/api/ofrendas/${data.id}/page" style="display:none;"><div style="color:var(--candle-gold); text-align:center;">✓ Photo loaded</div>`;
     }
 
+    // Load voice profile state if present
+    if (data.voice_profile) {
+      const vp = data.voice_profile;
+      if (vp.authorized_by) {
+        elements.inputVoiceAuth.value = vp.authorized_by;
+        elements.checkVoiceConsent.checked = true;
+      }
+      if (vp.has_reference) {
+        elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
+        elements.voiceRefStatus.style.color = "var(--success)";
+      } else {
+        elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusNone;
+        elements.voiceRefStatus.style.color = "var(--text-muted)";
+      }
+      if (vp.has_synthesized_audio) {
+        elements.voiceResultBox.style.display = "block";
+        elements.voiceAudioPlayer.src = `/api/ofrendas/${data.id}/voice/audio?t=${Date.now()}`;
+        if (vp.synthesized_duration_s) {
+          elements.voiceDurationInfo.textContent = `Duration: ${vp.synthesized_duration_s.toFixed(1)}s • Model: ${vp.model_used || "Local"}`;
+        }
+      } else {
+        elements.voiceResultBox.style.display = "none";
+        elements.voiceAudioPlayer.src = "";
+        elements.voiceDurationInfo.textContent = "";
+      }
+      if (vp.language) {
+        elements.selectVoiceLang.value = vp.language;
+      }
+    } else {
+      elements.voiceResultBox.style.display = "none";
+      elements.voiceAudioPlayer.src = "";
+      elements.inputVoiceAuth.value = "";
+      elements.checkVoiceConsent.checked = false;
+      elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusNone;
+      elements.voiceRefStatus.style.color = "var(--text-muted)";
+      elements.voiceDurationInfo.textContent = "";
+    }
+
     elements.drawerBackdrop.classList.remove("active");
     goToStep(4);
     updatePreviewIframe();
@@ -727,6 +1022,14 @@ function resetWizard() {
   elements.textareaTranscript.value = "";
   elements.textareaRemembrance.value = "";
   elements.photoPreviewBox.innerHTML = `<span class="photo-preview-empty" id="lbl-no-photo">${I18N[state.language].lblNoPhoto}</span>`;
+  elements.inputVoiceAuth.value = "";
+  elements.checkVoiceConsent.checked = false;
+  elements.inputVoiceRef.value = "";
+  elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusNone;
+  elements.voiceRefStatus.style.color = "var(--text-muted)";
+  elements.voiceResultBox.style.display = "none";
+  elements.voiceAudioPlayer.src = "";
+  elements.voiceDurationInfo.textContent = "";
   elements.previewIframe.src = "about:blank";
   goToStep(1);
 }
@@ -796,6 +1099,13 @@ function initEventListeners() {
   elements.btnGenerate.addEventListener("click", generateRemembrance);
   elements.btnRegenerate.addEventListener("click", generateRemembrance);
   elements.btnSaveRemembrance.addEventListener("click", saveRemembranceEdits);
+
+  // Step 4 Voice Recreation
+  elements.inputVoiceRef.addEventListener("change", handleVoiceRefSelected);
+  elements.btnUseStep3Audio.addEventListener("click", handleUseStep3Audio);
+  elements.btnSynthesizeVoice.addEventListener("click", synthesizeVoice);
+  elements.btnDownloadVoice.addEventListener("click", downloadSynthesizedVoice);
+  elements.btnDeleteVoice.addEventListener("click", deleteVoice);
 
   elements.btnDownloadHtml.addEventListener("click", () => {
     if (state.currentOfrendaId) {

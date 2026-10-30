@@ -42,6 +42,19 @@ def _get_photo_data_uri(ofrenda_id: str, photo_filename: Optional[str], storage:
     return f"data:{mime};base64,{b64_str}"
 
 
+def _get_voice_data_uri(ofrenda_id: str, storage: Optional[Storage] = None) -> Optional[str]:
+    """Load synthesized remembrance voice audio from disk and convert to base64 data URI."""
+    if not ofrenda_id:
+        return None
+    store = storage or Storage()
+    voice_path = store.get_synthesized_voice_path(ofrenda_id)
+    if not voice_path or not voice_path.exists():
+        return None
+    raw_bytes = voice_path.read_bytes()
+    b64_str = base64.b64encode(raw_bytes).decode("ascii")
+    return f"data:audio/wav;base64,{b64_str}"
+
+
 def render_ofrenda(ofrenda: Any, storage: Optional[Storage] = None) -> str:
     """Render self-contained HTML for an ofrenda without any external network references."""
     template = jinja_env.get_template("ofrenda.html.j2")
@@ -56,7 +69,15 @@ def render_ofrenda(ofrenda: Any, storage: Optional[Storage] = None) -> str:
         except Exception:
             photo_uri = None
 
+    voice_audio_uri = None
+    if ofrenda_id:
+        try:
+            voice_audio_uri = _get_voice_data_uri(str(ofrenda_id), storage)
+        except Exception:
+            voice_audio_uri = None
+
     return template.render(
         ofrenda=ofrenda,
         photo_uri=photo_uri,
+        voice_audio_uri=voice_audio_uri,
     )

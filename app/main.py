@@ -10,9 +10,9 @@ from typing import List, Optional
 import uuid
 import zipfile
 
-from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -20,9 +20,19 @@ from app.config import get_max_audio_mb, get_max_photo_mb, get_ollama_host, get_
 from app.llm import generate_remembrance
 from app.net import local_client
 from app.render import render_ofrenda
-from app.schemas import GenerateRequest, OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
+from app.schemas import (
+    GenerateRequest,
+    OfrendaCreate,
+    OfrendaRecord,
+    OfrendaSummary,
+    OfrendaUpdate,
+    VoiceConsentRecord,
+    VoiceProfileMetadata,
+    VoiceSynthesisRequest,
+)
 from app.storage import Storage
 import app.transcribe as transcribe_module
+from app.voice import get_voice_service
 
 # Configure privacy-safe logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -44,7 +54,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Return JSON error for HTTP exceptions without exposing stack traces."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"error": str(exc.detail)},
+        content={"error": str(exc.detail), "detail": str(exc.detail)},
     )
 
 
@@ -70,7 +80,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.get("/api/health")
 def health_check():
-    """Report status of Ollama, Whisper, and installed models. Never raises 500."""
+    """Report status of Ollama, Whisper, installed models, and local voice synthesis. Never raises 500."""
     whisper_available = False
     try:
         import faster_whisper  # noqa: F401
@@ -95,12 +105,16 @@ def health_check():
 
     overall_status = "ok" if (ollama_available and whisper_available) else "degraded"
 
+    voice_status = get_voice_service().get_engine_status()
+
     return {
         "status": overall_status,
         "ollama": ollama_available,
         "whisper": whisper_available,
         "model": get_ollama_model(),
         "models": installed_models,
+        "voice": voice_status,
+        "voice_synthesis": voice_status,
     }
 
 
@@ -313,6 +327,151 @@ def generate_ofrenda_remembrance(id: uuid.UUID, body: Optional[GenerateRequest] 
     }
 
 
+# --- Optional AI Voice Recreation Endpoints ---
+
+
+@app.post("/api/ofrendas/{id}/voice/reference", response_model=VoiceProfileMetadata)
+def upload_voice_reference(
+    id: uuid.UUID,
+    file: UploadFile = File(...),
+    authorized_by: str = Form(...),
+    confirmed_permission: bool = Form(...),
+):
+    """Upload family-authorized reference voice recording for voice synthesis."""
+    if not confirmed_permission:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Affirmative family authorization is strictly required for voice recreation.",
+        )
+
+    if not authorized_by or not authorized_by.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authorizing family member name is required.",
+        )
+
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    ext = Path(file.filename or "").suffix.lower().lstrip(".")
+    if ext not in ("wav", "mp3", "webm", "ogg", "m4a"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Unsupported audio format for reference voice. Allowed: wav, mp3, webm, ogg, m4a.",
+        )
+
+    audio_bytes = file.file.read()
+    max_bytes = get_max_audio_mb() * 1024 * 1024
+    if len(audio_bytes) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Audio exceeds maximum size of {get_max_audio_mb()} MB",
+        )
+
+    consent = VoiceConsentRecord(
+        authorized_by=authorized_by.strip(),
+        confirmed_permission=True,
+    )
+
+    voice_service = get_voice_service()
+    profile = voice_service.process_and_save_reference(
+        ofrenda_id=str(id),
+        audio_bytes=audio_bytes,
+        ext=ext,
+        consent=consent,
+        storage=storage,
+    )
+    return profile
+
+
+@app.post("/api/ofrendas/{id}/voice/synthesize", response_model=VoiceProfileMetadata)
+def synthesize_voice(id: uuid.UUID, request: VoiceSynthesisRequest):
+    """Synthesize remembrance speech using reference voice."""
+    if not request.consent.confirmed_permission:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Affirmative family permission is strictly required for voice recreation.",
+        )
+
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    if not record.remembrance:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No remembrance text found. Please generate a remembrance first before synthesizing voice.",
+        )
+
+    voice_service = get_voice_service()
+    try:
+        profile = voice_service.synthesize_remembrance(
+            ofrenda_id=str(id),
+            language=request.language,
+            speed=request.speed,
+            consent=request.consent,
+            storage=storage,
+        )
+        return profile
+    except ValueError as val_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+
+
+@app.get("/api/ofrendas/{id}/voice/audio")
+def get_synthesized_voice_audio(id: uuid.UUID):
+    """Stream synthesized memorial voice recreation audio with byte-range support."""
+    storage = get_storage()
+    synth_path = storage.get_synthesized_voice_path(str(id))
+    if not synth_path or not synth_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Synthesized voice audio not found.")
+
+    return FileResponse(
+        path=synth_path,
+        media_type="audio/wav",
+        headers={
+            "X-AI-Voice-Recreation": "Memorial-Simulation",
+            "X-Provenance": "Not spoken by deceased",
+        },
+    )
+
+
+@app.get("/api/ofrendas/{id}/voice/download")
+def download_synthesized_voice_audio(id: uuid.UUID):
+    """Download synthesized memorial voice audio file with attachment header."""
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    synth_path = storage.get_synthesized_voice_path(str(id))
+    if not synth_path or not synth_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Synthesized voice audio not found.")
+
+    safe_name = re.sub(r"[^\w\-]", "_", record.name.strip()) or "ofrenda"
+    filename = f"{safe_name}_AI_Voice_Recreation.wav"
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Type": "audio/wav",
+        "X-AI-Voice-Recreation": "Memorial-Simulation",
+    }
+    return Response(content=synth_path.read_bytes(), media_type="audio/wav", headers=headers)
+
+
+@app.delete("/api/ofrendas/{id}/voice", response_model=OfrendaRecord)
+def delete_voice_profile(id: uuid.UUID):
+    """Delete voice profile, reference recordings, and synthesized audio for an ofrenda."""
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+
+    return storage.delete_voice_profile(str(id))
+
+
 # --- Ofrenda HTML Render & Download Endpoints ---
 
 
@@ -352,7 +511,7 @@ def download_ofrenda_page(id: uuid.UUID):
 
 @app.get("/api/ofrendas/{id}/export.zip")
 def export_ofrenda_zip(id: uuid.UUID):
-    """Export complete ofrenda package as ZIP (ofrenda.html, photo, transcript.txt, ofrenda.json)."""
+    """Export complete ofrenda package as ZIP."""
     storage = get_storage()
     record = storage.get(str(id))
     if not record:
@@ -385,6 +544,16 @@ def export_ofrenda_zip(id: uuid.UUID):
             photo_path = folder / record.photo
             if photo_path.exists():
                 zf.writestr(record.photo, photo_path.read_bytes())
+
+        # 5. synthesized voice audio if present
+        synth_path = storage.get_synthesized_voice_path(str(id))
+        if synth_path and synth_path.exists():
+            zf.writestr("remembrance_synthesized.wav", synth_path.read_bytes())
+
+        # 6. reference voice recording if present
+        ref_path = storage.get_reference_audio_path(str(id))
+        if ref_path and ref_path.exists():
+            zf.writestr(ref_path.name, ref_path.read_bytes())
 
     buf.seek(0)
     safe_name = re.sub(r"[^\w\-]", "_", record.name.strip()) or "ofrenda"

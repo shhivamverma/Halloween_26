@@ -234,6 +234,101 @@
         </div>
       </div>
 
+      <!-- Optional Memorial Voice Recreation Section -->
+      <section class="voice-card" id="voice-card" aria-labelledby="lbl-voice-title">
+        <div class="voice-card-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.3rem;">🎙️</span>
+            <div>
+              <h2 id="lbl-voice-title" class="voice-title">Memorial Voice Recreation (Optional Local AI Speech)</h2>
+              <p id="lbl-voice-desc" class="field-hint" style="margin:2px 0 0 0;">
+                Synthesize spoken audio of the remembrance using a family-authorized voice reference.
+              </p>
+            </div>
+          </div>
+          <span id="voice-engine-badge" class="voice-badge-tag">Local Engine Ready</span>
+        </div>
+
+        <!-- Ethical Consent Notice -->
+        <div class="voice-notice">
+          <strong>⚠️ Memorial Simulation Notice & Consent Requirement</strong>
+          <p id="lbl-voice-ethical-notice">
+            Voice recreation produces an AI simulation for remembrance purposes only. The synthesized speech must never be presented as words actually spoken by the deceased. Explicit permission from the family is required.
+          </p>
+          <div class="voice-consent-form">
+            <div class="form-group" style="margin-bottom:8px;">
+              <label for="input-voice-auth" id="lbl-voice-auth">Authorizing Family Member *</label>
+              <input type="text" id="input-voice-auth" maxlength="100" placeholder="e.g. Maria Hernandez (Daughter)">
+            </div>
+            <label class="consent-checkbox-label">
+              <input type="checkbox" id="check-voice-consent">
+              <span id="lbl-voice-consent">I confirm that I have explicit family permission to synthesize a memorial voice recreation for this ofrenda.</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Voice Reference Audio Source -->
+        <div class="form-row" style="margin-top:16px; align-items:flex-end;">
+          <div class="form-group" style="flex:1;">
+            <label for="input-voice-ref" id="lbl-voice-ref">Reference Voice Recording (WAV, MP3, M4A, WebM)</label>
+            <input type="file" id="input-voice-ref" accept="audio/*">
+            <div id="voice-ref-status" class="field-hint" style="margin-top:4px;">No reference voice loaded yet.</div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <button type="button" id="btn-use-step3-audio" class="btn btn-secondary" style="font-size:0.85rem;" title="Use the audio recorded in Step 3">
+              Use Step 3 Voice Note
+            </button>
+          </div>
+        </div>
+
+        <!-- Voice Synthesis Settings & Trigger -->
+        <div class="form-row" style="align-items:flex-end; margin-top:8px;">
+          <div class="form-group" style="max-width:200px;">
+            <label for="select-voice-lang" id="lbl-voice-lang">Voice Language</label>
+            <select id="select-voice-lang">
+              <option value="es" selected>Español (es)</option>
+              <option value="en">English (en)</option>
+              <option value="fr">Français (fr)</option>
+              <option value="de">Deutsch (de)</option>
+              <option value="it">Italiano (it)</option>
+              <option value="pt">Português (pt)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <button type="button" id="btn-synthesize-voice" class="btn btn-primary" style="min-width:230px;">
+              <span id="btn-synth-text">Synthesize Memorial Voice</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading Voice Status -->
+        <div id="voice-loading" style="display:none; margin:14px 0; color:var(--candle-gold); font-style:italic;">
+          🕯️ <span id="voice-loading-message">Synthesizing memorial voice locally... This may take a moment.</span>
+        </div>
+
+        <!-- Result / Player Preview Card -->
+        <div id="voice-result-box" style="display:none; margin-top:16px;" class="voice-result-box">
+          <div class="voice-badge">
+            <span class="voice-badge-icon">⚠️</span>
+            <span class="voice-badge-text" id="lbl-voice-badge-banner">
+              AI-Generated Voice Recreation &bull; Memorial Simulation Only (Not spoken by the deceased)
+            </span>
+          </div>
+          <div style="margin:10px 0;">
+            <audio id="voice-audio-player" controls style="width:100%;"></audio>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+            <button type="button" id="btn-download-voice" class="btn btn-secondary" style="font-size:0.85rem;">
+              📥 Download Voice (.wav)
+            </button>
+            <button type="button" id="btn-delete-voice" class="btn btn-danger" style="font-size:0.85rem; padding:6px 12px; min-height:36px;">
+              Remove Voice
+            </button>
+            <span id="voice-duration-info" class="field-hint" style="color:var(--text-muted);"></span>
+          </div>
+        </div>
+      </section>
+
       <!-- Action Toolbar -->
       <div style="display: flex; gap: 12px; flex-wrap: wrap; margin: 24px 0 12px 0;">
         <button type="button" id="btn-download-html" class="btn btn-primary">

@@ -8,7 +8,14 @@ from typing import List, Optional
 import uuid
 
 from app.config import get_data_dir
-from app.schemas import OfrendaCreate, OfrendaRecord, OfrendaSummary, OfrendaUpdate
+from app.schemas import (
+    OfrendaCreate,
+    OfrendaRecord,
+    OfrendaSummary,
+    OfrendaUpdate,
+    VoiceConsentRecord,
+    VoiceProfileMetadata,
+)
 
 
 def validate_uuid(val: str | uuid.UUID) -> str:
@@ -37,6 +44,13 @@ class Storage:
         """Return path to ofrenda directory after validating UUID."""
         return self._get_folder(ofrenda_id)
 
+    def get_voice_folder(self, ofrenda_id: str) -> Path:
+        """Return path to voice subfolder, creating it if needed."""
+        folder = self._get_folder(ofrenda_id)
+        voice_folder = folder / "voice"
+        voice_folder.mkdir(parents=True, exist_ok=True)
+        return voice_folder
+
     def create(self, payload: OfrendaCreate) -> OfrendaRecord:
         """Create a new ofrenda directory and save ofrenda.json."""
         new_id = str(uuid.uuid4())
@@ -60,6 +74,7 @@ class Storage:
             remembrance=None,
             generated_by=None,
             model_used=None,
+            voice_profile=None,
         )
 
         folder = self._get_folder(new_id)
@@ -89,6 +104,7 @@ class Storage:
                 if json_path.exists():
                     try:
                         data = json.loads(json_path.read_text(encoding="utf-8"))
+                        vp = data.get("voice_profile") or {}
                         summaries.append(
                             OfrendaSummary(
                                 id=data["id"],
@@ -96,6 +112,7 @@ class Storage:
                                 created_at=data["created_at"],
                                 relationship=data.get("relationship"),
                                 photo=data.get("photo"),
+                                has_voice=bool(vp.get("has_synthesized_audio")),
                             )
                         )
                     except Exception:
@@ -140,7 +157,6 @@ class Storage:
         filename = f"photo.{ext}"
         target_path = folder / filename
 
-        # Remove existing photo files if extension differs
         for old_file in folder.glob("photo.*"):
             try:
                 old_file.unlink()
@@ -150,6 +166,110 @@ class Storage:
         target_path.write_bytes(photo_bytes)
         record.photo = filename
 
+        json_path = folder / "ofrenda.json"
+        json_path.write_text(record.model_dump_json(indent=2), encoding="utf-8")
+        return record
+
+    def save_voice_reference(
+        self,
+        ofrenda_id: str,
+        audio_bytes: bytes,
+        ext: str,
+        consent: VoiceConsentRecord,
+        duration_s: float = 0.0,
+    ) -> OfrendaRecord:
+        """Save family-authorized reference voice recording and log consent."""
+        record = self.get(ofrenda_id)
+        if not record:
+            raise KeyError(f"Ofrenda {ofrenda_id} not found")
+
+        voice_folder = self.get_voice_folder(ofrenda_id)
+        ref_filename = f"reference_audio.{ext}"
+        ref_path = voice_folder / ref_filename
+
+        # Remove old reference audio if extension differs
+        for old_ref in voice_folder.glob("reference_audio.*"):
+            try:
+                old_ref.unlink()
+            except OSError:
+                pass
+
+        ref_path.write_bytes(audio_bytes)
+
+        # Write consent audit record
+        consent_path = voice_folder / "consent_log.json"
+        consent_path.write_text(consent.model_dump_json(indent=2), encoding="utf-8")
+
+        # Update metadata
+        profile = record.voice_profile or VoiceProfileMetadata()
+        profile.has_reference = True
+        profile.reference_filename = ref_filename
+        profile.reference_duration_s = duration_s
+        profile.authorized_by = consent.authorized_by
+        record.voice_profile = profile
+
+        json_path = self._get_folder(ofrenda_id) / "ofrenda.json"
+        json_path.write_text(record.model_dump_json(indent=2), encoding="utf-8")
+        return record
+
+    def save_synthesized_voice(
+        self,
+        ofrenda_id: str,
+        wav_bytes: bytes,
+        model_used: str,
+        language: str,
+        duration_s: float = 0.0,
+    ) -> OfrendaRecord:
+        """Save generated synthetic remembrance audio to disk."""
+        record = self.get(ofrenda_id)
+        if not record:
+            raise KeyError(f"Ofrenda {ofrenda_id} not found")
+
+        voice_folder = self.get_voice_folder(ofrenda_id)
+        synth_filename = "remembrance_synthesized.wav"
+        synth_path = voice_folder / synth_filename
+        synth_path.write_bytes(wav_bytes)
+
+        profile = record.voice_profile or VoiceProfileMetadata()
+        profile.has_synthesized_audio = True
+        profile.synthesized_filename = synth_filename
+        profile.synthesized_duration_s = duration_s
+        profile.model_used = model_used
+        profile.language = language
+        profile.synthesized_at = datetime.now(timezone.utc).isoformat()
+        record.voice_profile = profile
+
+        json_path = self._get_folder(ofrenda_id) / "ofrenda.json"
+        json_path.write_text(record.model_dump_json(indent=2), encoding="utf-8")
+        return record
+
+    def get_synthesized_voice_path(self, ofrenda_id: str) -> Optional[Path]:
+        """Return Path to remembrance_synthesized.wav if it exists on disk."""
+        voice_folder = self.get_voice_folder(ofrenda_id)
+        p = voice_folder / "remembrance_synthesized.wav"
+        return p if p.exists() else None
+
+    def get_reference_audio_path(self, ofrenda_id: str) -> Optional[Path]:
+        """Return Path to reference audio if present."""
+        record = self.get(ofrenda_id)
+        if not record or not record.voice_profile or not record.voice_profile.reference_filename:
+            return None
+        voice_folder = self.get_voice_folder(ofrenda_id)
+        p = voice_folder / record.voice_profile.reference_filename
+        return p if p.exists() else None
+
+    def delete_voice_profile(self, ofrenda_id: str) -> OfrendaRecord:
+        """Delete all voice files and reset voice profile on ofrenda record."""
+        record = self.get(ofrenda_id)
+        if not record:
+            raise KeyError(f"Ofrenda {ofrenda_id} not found")
+
+        folder = self._get_folder(ofrenda_id)
+        voice_folder = folder / "voice"
+        if voice_folder.exists():
+            shutil.rmtree(voice_folder)
+
+        record.voice_profile = None
         json_path = folder / "ofrenda.json"
         json_path.write_text(record.model_dump_json(indent=2), encoding="utf-8")
         return record

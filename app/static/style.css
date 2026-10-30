@@ -442,3 +442,95 @@ button:focus-visible, .btn:focus-visible {
     height: 480px;
   }
 }
+
+/* Memorial Voice Recreation Card */
+.voice-card {
+  margin-top: 24px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.voice-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.voice-title {
+  font-size: 1.15rem;
+  color: var(--candle-gold);
+  font-weight: 600;
+}
+.voice-badge-tag {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background-color: rgba(255, 213, 79, 0.15);
+  color: var(--candle-gold);
+  border: 1px solid rgba(255, 213, 79, 0.35);
+}
+.voice-notice {
+  background: rgba(242, 140, 40, 0.1);
+  border-left: 4px solid var(--marigold);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.voice-notice strong {
+  color: var(--marigold);
+  display: block;
+  margin-bottom: 6px;
+}
+.voice-consent-form {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(242, 140, 40, 0.3);
+}
+.consent-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--candle-gold);
+  margin-top: 6px;
+}
+.consent-checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--marigold);
+  cursor: pointer;
+}
+.voice-result-box {
+  background: rgba(18, 11, 24, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+.voice-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--candle-gold);
+  background: rgba(242, 140, 40, 0.15);
+  border: 1px solid rgba(242, 140, 40, 0.45);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-weight: 600;
+}
+.voice-badge-icon {
+  font-size: 1.1rem;
+  color: var(--marigold);
+  flex-shrink: 0;
+}
+.voice-badge-text {
+  line-height: 1.4;
+}
