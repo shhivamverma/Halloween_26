@@ -1,0 +1,29 @@
+services:
+  ofrenda:
+    build: .
+    container_name: ofrenda-keeper
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATA_DIR=/app/data
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=llama3.2:3b
+      - WHISPER_MODEL=base
+      - HF_HUB_OFFLINE=1
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Optional bundled Ollama service for completely standalone server deployment
+  # Run with: docker compose --profile with-ollama up -d
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ofrenda-ollama
+    profiles: ["with-ollama"]
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_data:/root/.ollama

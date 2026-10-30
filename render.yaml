@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ofrenda-keeper
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATA_DIR
+        value: /app/data
+      - key: WHISPER_MODEL
+        value: base
+      - key: HF_HUB_OFFLINE
+        value: "1"
+    disk:
+      name: ofrenda-storage
+      mountPath: /app/data
+      sizeGB: 1

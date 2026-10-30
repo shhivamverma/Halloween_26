@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+htmlcov
+data/ofrendas/*
+!data/ofrendas/.gitkeep
+node_modules
+.DS_Store
+*.log
