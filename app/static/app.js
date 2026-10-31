@@ -388,6 +388,23 @@ function goToStep(stepNumber) {
     }
   });
 
+  // 3D Altar camera transition & soundscape feedback
+  if (window.setWorld3DStep) {
+    window.setWorld3DStep(stepNumber);
+  }
+  if (window.OfrendaAudio) {
+    window.OfrendaAudio.playChime();
+  }
+
+  // Smooth scroll to wizard
+  const heroSection = document.getElementById("section-hero");
+  if (heroSection && !heroSection.classList.contains("hidden")) {
+    const mainEl = document.querySelector(".main-content");
+    if (mainEl) {
+      mainEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -535,6 +552,14 @@ async function handlePhotoSelected(e) {
     elements.photoPreviewBox.innerHTML = `<img src="${event.target.result}" alt="Photo Preview">`;
   };
   reader.readAsDataURL(file);
+
+  // Update 3D WebGL Altar Frame in real time
+  if (window.update3DPortrait) {
+    window.update3DPortrait(file);
+  }
+  if (window.OfrendaAudio) {
+    window.OfrendaAudio.playCandleLight();
+  }
 
   if (!state.currentOfrendaId) {
     // If user hasn't created the ofrenda yet, create with current name or temporary name
@@ -868,6 +893,13 @@ async function generateRemembrance() {
 
     elements.textareaRemembrance.value = data.remembrance || "";
     updatePreviewIframe();
+
+    // Fanfare banner and celebratory memorial reveal chime
+    const fanfare = document.getElementById("altar-fanfare-banner");
+    if (fanfare) fanfare.style.display = "flex";
+    if (window.OfrendaAudio) {
+      window.OfrendaAudio.playReveal();
+    }
   } catch (err) {
     alert("Error generating remembrance: " + err.message);
   } finally {
@@ -1213,6 +1245,10 @@ async function openSavedOfrenda(id) {
     }
 
     elements.drawerBackdrop.classList.remove("active");
+    const heroSection = document.getElementById("section-hero");
+    if (heroSection) heroSection.classList.add("hidden");
+    const fanfare = document.getElementById("altar-fanfare-banner");
+    if (fanfare && data.remembrance) fanfare.style.display = "flex";
     goToStep(4);
     updatePreviewIframe();
   } catch (err) {
@@ -1262,11 +1298,147 @@ function resetWizard() {
   elements.voiceAudioPlayer.src = "";
   elements.voiceDurationInfo.textContent = "";
   elements.previewIframe.src = "about:blank";
+  const fanfare = document.getElementById("altar-fanfare-banner");
+  if (fanfare) fanfare.style.display = "none";
+  if (window.update3DPortrait) window.update3DPortrait(null);
   goToStep(1);
 }
 
 // Event Listeners Initialization
 function initEventListeners() {
+  // 3D Immersive Hero Actions
+  const heroSection = document.getElementById("section-hero");
+  const btnHeroStart = document.getElementById("btn-hero-start");
+  if (btnHeroStart) {
+    btnHeroStart.addEventListener("click", () => {
+      if (heroSection) heroSection.classList.add("hidden");
+      goToStep(1);
+      if (window.OfrendaAudio) {
+        window.OfrendaAudio.playButtonClick();
+        window.OfrendaAudio.playChime();
+      }
+    });
+  }
+
+  const btnHeroDemo = document.getElementById("btn-hero-demo");
+  if (btnHeroDemo) {
+    btnHeroDemo.addEventListener("click", () => {
+      if (heroSection) heroSection.classList.add("hidden");
+      loadDemoOfrenda();
+      if (window.OfrendaAudio) {
+        window.OfrendaAudio.playButtonClick();
+        window.OfrendaAudio.playChime();
+      }
+    });
+  }
+
+  const brandHomeLink = document.getElementById("brand-home-link");
+  if (brandHomeLink) {
+    brandHomeLink.addEventListener("click", () => {
+      if (heroSection) heroSection.classList.remove("hidden");
+      if (window.setWorld3DStep) window.setWorld3DStep("hero");
+      if (window.OfrendaAudio) window.OfrendaAudio.playChime();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  // Memorial Soundscape Controls
+  const btnSoundToggle = document.getElementById("btn-sound-toggle");
+  const soundIcon = document.getElementById("sound-icon");
+  const soundLabel = document.getElementById("sound-label");
+  const soundMixerPanel = document.getElementById("sound-mixer-panel");
+  const soundMixerClose = document.getElementById("sound-mixer-close");
+
+  function updateSoundUI() {
+    if (!window.OfrendaAudio) return;
+    const active = window.OfrendaAudio.state.enabled;
+    if (btnSoundToggle) {
+      if (active) {
+        btnSoundToggle.classList.add("sound-active");
+        if (soundIcon) soundIcon.textContent = "🔊";
+        if (soundLabel) soundLabel.textContent = "Sound: On";
+      } else {
+        btnSoundToggle.classList.remove("sound-active");
+        if (soundIcon) soundIcon.textContent = "🔇";
+        if (soundLabel) soundLabel.textContent = "Sound: Off";
+      }
+    }
+  }
+
+  if (btnSoundToggle) {
+    btnSoundToggle.addEventListener("click", () => {
+      if (window.OfrendaAudio) {
+        window.OfrendaAudio.toggle();
+        updateSoundUI();
+        if (soundMixerPanel && window.OfrendaAudio.state.enabled) {
+          soundMixerPanel.classList.toggle("open");
+        }
+      }
+    });
+  }
+
+  if (soundMixerClose && soundMixerPanel) {
+    soundMixerClose.addEventListener("click", () => {
+      soundMixerPanel.classList.remove("open");
+    });
+  }
+
+  const sliderMaster = document.getElementById("slider-vol-master");
+  const sliderMusic = document.getElementById("slider-vol-music");
+  const sliderAmbience = document.getElementById("slider-vol-ambience");
+  const sliderSfx = document.getElementById("slider-vol-sfx");
+
+  if (sliderMaster) {
+    sliderMaster.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.OfrendaAudio) window.OfrendaAudio.setMasterVolume(val);
+      const lbl = document.getElementById("lbl-vol-master");
+      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+    });
+  }
+  if (sliderMusic) {
+    sliderMusic.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.OfrendaAudio) window.OfrendaAudio.setMusicVolume(val);
+      const lbl = document.getElementById("lbl-vol-music");
+      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+    });
+  }
+  if (sliderAmbience) {
+    sliderAmbience.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.OfrendaAudio) window.OfrendaAudio.setAmbienceVolume(val);
+      const lbl = document.getElementById("lbl-vol-ambience");
+      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+    });
+  }
+  if (sliderSfx) {
+    sliderSfx.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.OfrendaAudio) window.OfrendaAudio.setSfxVolume(val);
+      const lbl = document.getElementById("lbl-vol-sfx");
+      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+    });
+  }
+
+  // Atmospheric Sound Interactions
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("button") || e.target.closest(".btn")) {
+      if (window.OfrendaAudio) window.OfrendaAudio.playButtonClick();
+    }
+  });
+
+  let typeThrottle = 0;
+  const onTypeKey = () => {
+    const now = Date.now();
+    if (now - typeThrottle > 90) {
+      typeThrottle = now;
+      if (window.OfrendaAudio) window.OfrendaAudio.playTypeSound();
+    }
+  };
+  if (elements.textareaStory) elements.textareaStory.addEventListener("keydown", onTypeKey);
+  if (elements.textareaRemembrance) elements.textareaRemembrance.addEventListener("keydown", onTypeKey);
+
   // Language switcher
   elements.btnLangToggle.addEventListener("click", () => {
     const newLang = state.language === "es" ? "en" : "es";

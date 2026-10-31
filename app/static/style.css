@@ -1,17 +1,17 @@
-/* Offline Ofrenda Keeper — Calming, Accessible Altar Theme */
+/* Offline Ofrenda Keeper — Strict Dark Memorial Sanctuary Theme */
 
 :root {
-  --bg-deep: #120b18;
-  --bg-surface: #1e1327;
-  --bg-card: #271933;
-  --bg-input: #150d1e;
-  --border-color: rgba(242, 140, 40, 0.35);
-  --border-focus: #f28c28;
-  --text-main: #fff8e7;
-  --text-muted: #d0c2b2;
-  --marigold: #f28c28;
-  --candle-gold: #ffd54f;
-  --cempasuchil-magenta: #d81b60;
+  --bg-deep: #09060d;               /* Main background: near-black */
+  --bg-surface: #160d20;            /* Secondary background: deep midnight purple */
+  --bg-card: #24152e;               /* Cards and panels: dark plum */
+  --bg-input: #120a1a;              /* Inputs: deep plum black */
+  --border-color: rgba(255, 154, 39, 0.35);
+  --border-focus: #ff9a27;
+  --text-main: #f5ebdd;             /* Main text: warm ivory */
+  --text-muted: #b9aabd;            /* Secondary text: muted lavender-grey */
+  --marigold: #ff9a27;              /* Primary accent: marigold orange */
+  --candle-gold: #ffd166;           /* Secondary accent: antique gold */
+  --cempasuchil-magenta: #e52b70;   /* Highlight accent: deep magenta */
   --teal-accent: #00897b;
   --danger: #ef5350;
   --success: #66bb6a;
@@ -33,18 +33,28 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
-/* Ambient 3D Particle Canvas */
+/* 3D WebGL Altar Canvas */
+.webgl-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: auto;
+  z-index: 0;
+}
+
+/* Fallback Ambient 2D Particle Canvas */
 .ambient-canvas {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.85;
+  z-index: 1;
+  opacity: 0.65;
 }
 
 /* Header & Status (Glassmorphic & Sticky) */
@@ -52,11 +62,11 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  background: rgba(36, 20, 49, 0.88);
-  border-bottom: 1px solid rgba(242, 140, 40, 0.4);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(242, 140, 40, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(14, 8, 20, 0.94);
+  border-bottom: 1px solid rgba(255, 154, 39, 0.35);
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 154, 39, 0.15);
   padding: 14px 24px;
 }
 .header-inner {
@@ -72,29 +82,107 @@ body {
 .brand-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  color: inherit;
 }
 .brand-symbol {
-  font-size: 1.6rem;
-  filter: drop-shadow(0 0 10px rgba(242, 140, 40, 0.6));
-  animation: float-symbol 3s ease-in-out infinite alternate;
+  font-size: 1.7rem;
+  filter: drop-shadow(0 0 12px rgba(255, 154, 39, 0.7));
+  animation: float-symbol 3.5s ease-in-out infinite alternate;
 }
 @keyframes float-symbol {
   0% { transform: translateY(0) rotate(-2deg); }
   100% { transform: translateY(-4px) rotate(3deg); }
 }
 .brand-title {
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 700;
   color: var(--candle-gold);
   letter-spacing: 0.5px;
-  text-shadow: 0 2px 12px rgba(255, 213, 79, 0.3);
+  text-shadow: 0 2px 14px rgba(255, 209, 102, 0.4);
 }
 .header-controls {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Sound Toggle & Audio Mixer */
+.sound-control-wrapper {
+  position: relative;
+}
+.btn-sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-sound:hover {
+  border-color: var(--marigold);
+  color: var(--text-main);
+}
+.btn-sound.sound-active {
+  color: var(--candle-gold);
+  border-color: var(--marigold);
+  box-shadow: 0 0 12px rgba(255, 154, 39, 0.3);
+}
+.sound-mixer-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 290px;
+  background: rgba(22, 13, 32, 0.97);
+  border: 1px solid var(--marigold);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(255, 154, 39, 0.25);
+  backdrop-filter: blur(18px);
+  z-index: 1000;
+}
+.sound-mixer-panel.open {
+  display: block;
+  animation: panel-enter 0.25s ease-out;
+}
+.mixer-header {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--candle-gold);
+  border-bottom: 1px solid rgba(255, 154, 39, 0.25);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mixer-row {
+  margin-bottom: 12px;
+}
+.mixer-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.mixer-slider {
+  width: 100%;
+  accent-color: var(--marigold);
+  height: 5px;
+  background: var(--bg-deep);
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 /* Glowing Demo Quick-Load Button */
@@ -877,4 +965,264 @@ button:focus-visible, .btn:focus-visible {
 }
 .voice-badge-text {
   line-height: 1.4;
+}
+
+/* ==========================================================================
+   IMMERSIVE 3D HERO SECTION & CINEMATIC EXPERIENCE
+   ========================================================================== */
+.section-hero {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+  padding: 48px 20px;
+  text-align: center;
+  transition: opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+              max-height 0.6s ease,
+              padding 0.5s ease;
+  overflow: hidden;
+}
+.section-hero.hidden {
+  opacity: 0;
+  transform: translateY(-24px) scale(0.96);
+  max-height: 0;
+  padding: 0 20px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.hero-container {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  background: radial-gradient(circle at 50% 20%, rgba(36, 21, 46, 0.82) 0%, rgba(22, 13, 32, 0.92) 55%, rgba(9, 6, 13, 0.96) 100%);
+  border: 1.5px solid rgba(255, 154, 39, 0.35);
+  border-radius: 24px;
+  padding: 48px 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85),
+              0 0 36px rgba(255, 154, 39, 0.15),
+              inset 0 1px 0 rgba(255, 209, 102, 0.35);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: hero-appear 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes hero-appear {
+  0% { opacity: 0; transform: translateY(28px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--candle-gold);
+  background: rgba(255, 154, 39, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  padding: 7px 20px;
+  border-radius: 30px;
+  margin-bottom: 24px;
+  box-shadow: 0 0 18px rgba(255, 154, 39, 0.22);
+}
+
+.hero-title-3d {
+  margin: 0 0 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.15;
+}
+.hero-title-gradient {
+  font-size: clamp(2.4rem, 5.8vw, 3.8rem);
+  font-family: Georgia, 'Playfair Display', serif;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFF5EA 0%, #FFD166 45%, #FF9A27 80%, #E52B70 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(255, 154, 39, 0.4));
+}
+.hero-title-sub {
+  font-size: clamp(1.3rem, 2.8vw, 2rem);
+  font-family: Georgia, 'Playfair Display', serif;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--candle-gold);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+
+.hero-description {
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  line-height: 1.7;
+  color: var(--text-main);
+  max-width: 680px;
+  margin: 0 auto 34px auto;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.hero-actions {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.btn-hero-primary {
+  background: linear-gradient(135deg, #FF9A27 0%, #E52B70 100%);
+  color: #09060D !important;
+  font-weight: 800;
+  font-size: 1.12rem;
+  padding: 15px 36px;
+  border-radius: 32px;
+  box-shadow: 0 6px 26px rgba(229, 43, 112, 0.45),
+              0 0 20px rgba(255, 154, 39, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-hero-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 34px rgba(229, 43, 112, 0.65),
+              0 0 30px rgba(255, 154, 39, 0.65);
+}
+.btn-hero-secondary {
+  background: rgba(36, 21, 46, 0.85);
+  border: 1.5px solid var(--candle-gold);
+  color: var(--candle-gold) !important;
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 14px 28px;
+  border-radius: 32px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.btn-hero-secondary:hover {
+  background: rgba(255, 154, 39, 0.2);
+  border-color: var(--marigold);
+  color: #FFFFFF !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(255, 154, 39, 0.35);
+}
+
+.hero-hints {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+}
+.hint-dot {
+  color: var(--marigold);
+}
+
+/* ==========================================================================
+   ENHANCED 3D FLOATING PHOTO FRAME & STEP INTERACTIONS
+   ========================================================================== */
+.photo-uploader {
+  position: relative;
+  background: rgba(22, 13, 32, 0.7);
+  border: 1px solid rgba(255, 154, 39, 0.25);
+  border-radius: 12px;
+  padding: 18px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.photo-uploader:hover {
+  border-color: var(--marigold);
+  box-shadow: 0 0 18px rgba(255, 154, 39, 0.2);
+}
+.photo-preview {
+  position: relative;
+  width: 130px;
+  height: 165px;
+  border: 2px solid var(--candle-gold);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 14px rgba(255, 209, 102, 0.3);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease;
+}
+.photo-preview:hover {
+  transform: perspective(600px) rotateY(6deg) rotateX(-4deg) scale(1.04);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 24px rgba(255, 154, 39, 0.45);
+}
+.photo-preview::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Offering Cards 3D Lift & Illumination */
+.offerings-grid .form-group {
+  background: rgba(36, 21, 46, 0.65);
+  border: 1px solid rgba(255, 154, 39, 0.2);
+  border-radius: 12px;
+  padding: 18px;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.offerings-grid .form-group:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 154, 39, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 16px rgba(255, 154, 39, 0.15);
+}
+
+/* Atmospheric Typing Glow */
+textarea:focus {
+  outline: none;
+  border-color: var(--marigold) !important;
+  box-shadow: 0 0 0 3px rgba(255, 154, 39, 0.25), 0 0 20px rgba(255, 154, 39, 0.35) !important;
+}
+
+/* Step 4 Altar Fanfare & Stage Styling */
+.altar-reveal-fanfare {
+  background: linear-gradient(135deg, rgba(255, 154, 39, 0.18) 0%, rgba(229, 43, 112, 0.14) 100%);
+  border: 1px solid var(--marigold);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: fanfare-glow 3s infinite alternate;
+}
+@keyframes fanfare-glow {
+  0% { box-shadow: 0 0 14px rgba(255, 154, 39, 0.2); }
+  100% { box-shadow: 0 0 28px rgba(229, 43, 112, 0.35), 0 0 18px rgba(255, 154, 39, 0.3); }
+}
+.altar-reveal-fanfare-icon {
+  font-size: 1.8rem;
+  color: var(--candle-gold);
+  flex-shrink: 0;
+  animation: float-symbol 2.8s ease-in-out infinite alternate;
+}
+.altar-reveal-fanfare-text {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+.altar-reveal-fanfare-text strong {
+  color: var(--candle-gold);
 }

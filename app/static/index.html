@@ -7,17 +7,49 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <!-- Ambient 3D Petals & Embers Canvas -->
+  <!-- 3D WebGL Altar Environment Canvas -->
+  <canvas id="webgl-canvas" class="webgl-canvas" aria-hidden="true"></canvas>
+
+  <!-- Ambient 2D Petals & Embers Canvas (Layered accent) -->
   <canvas id="ambient-canvas" class="ambient-canvas" aria-hidden="true"></canvas>
 
   <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
-      <div class="brand-wrapper">
+      <div class="brand-wrapper" id="brand-home-link" style="cursor: pointer;" title="Return to Memorial Sanctuary">
         <span class="brand-symbol" aria-hidden="true">💀🌼</span>
         <div class="brand-title" id="lbl-brand-title">Offline Ofrenda Keeper</div>
       </div>
       <div class="header-controls">
+        <!-- Memorial Soundscape Controls -->
+        <div class="sound-control-wrapper">
+          <button type="button" id="btn-sound-toggle" class="btn btn-sound" title="Toggle Memorial Soundscape" aria-expanded="false">
+            <span id="sound-icon">🔇</span> <span id="sound-label">Sound: Off</span>
+          </button>
+          <div id="sound-mixer-panel" class="sound-mixer-panel" role="region" aria-label="Audio Mixer">
+            <div class="mixer-header">
+              <span>Memorial Soundscape</span>
+              <span id="sound-mixer-close" style="cursor:pointer;" title="Close">&times;</span>
+            </div>
+            <div class="mixer-row">
+              <div class="mixer-label"><span>Master Volume</span><span id="lbl-vol-master">70%</span></div>
+              <input type="range" class="mixer-slider" id="slider-vol-master" min="0" max="1" step="0.05" value="0.7">
+            </div>
+            <div class="mixer-row">
+              <div class="mixer-label"><span>Music & Melody</span><span id="lbl-vol-music">50%</span></div>
+              <input type="range" class="mixer-slider" id="slider-vol-music" min="0" max="1" step="0.05" value="0.5">
+            </div>
+            <div class="mixer-row">
+              <div class="mixer-label"><span>Candles & Wind</span><span id="lbl-vol-ambience">60%</span></div>
+              <input type="range" class="mixer-slider" id="slider-vol-ambience" min="0" max="1" step="0.05" value="0.6">
+            </div>
+            <div class="mixer-row">
+              <div class="mixer-label"><span>Interactions & Bells</span><span id="lbl-vol-sfx">70%</span></div>
+              <input type="range" class="mixer-slider" id="slider-vol-sfx" min="0" max="1" step="0.05" value="0.7">
+            </div>
+          </div>
+        </div>
+
         <button type="button" id="btn-demo-quick" class="btn btn-demo-glow" title="Instant demonstration with fictional Abuela Rosa">✨ Demo (Abuela Rosa)</button>
         <button type="button" id="btn-ambient-toggle" class="btn btn-secondary" title="Toggle 3D Ambient Petals">🌸 Petals: On</button>
         <div id="status-badge" class="status-badge" role="status" aria-live="polite">
@@ -29,6 +61,37 @@
       </div>
     </div>
   </header>
+
+  <!-- Immersive 3D Hero Section -->
+  <section class="section-hero" id="section-hero">
+    <div class="hero-container">
+      <div class="hero-badge">🌼 Sacred Digital Memorial Sanctuary 🕯️</div>
+      <h1 class="hero-title-3d">
+        <span class="hero-title-gradient">Honor Their Memory</span>
+        <span class="hero-title-sub">In Living Light & Color</span>
+      </h1>
+      <p class="hero-description">
+        Step into an immersive, private, 100% offline 3D memorial altar inspired by Día de los Muertos. Light candles, arrange cempasúchil petals, offer their favorite treats, and preserve cherished remembrances forever on your device.
+      </p>
+      <div class="hero-actions">
+        <button type="button" id="btn-hero-start" class="btn btn-hero-primary">
+          <span>🕯️</span>
+          <span>Create Your Ofrenda</span>
+        </button>
+        <button type="button" id="btn-hero-demo" class="btn btn-hero-secondary">
+          <span>✨</span>
+          <span>Experience Demo (Abuela Rosa)</span>
+        </button>
+      </div>
+      <div class="hero-hints">
+        <span class="hint-item">✨ Click any 3D candle to light or extinguish</span>
+        <span class="hint-dot">&bull;</span>
+        <span class="hint-item">🌸 Pure WebGL & procedural audio</span>
+        <span class="hint-dot">&bull;</span>
+        <span class="hint-item">🔒 Completely private & local</span>
+      </div>
+    </div>
+  </section>
 
   <!-- Main Wizard Container -->
   <main class="main-content">
@@ -250,6 +313,15 @@
 
       <div class="step4-workspace">
         <div class="step4-controls-col">
+          <!-- Altar Reveal Fanfare Banner -->
+          <div class="altar-reveal-fanfare" id="altar-fanfare-banner" style="display: none;">
+            <span class="altar-reveal-fanfare-icon">🕯️✨</span>
+            <div class="altar-reveal-fanfare-text">
+              <strong>The Sacred Altar is Illuminated.</strong><br>
+              Every offering, memory, and candle has been gathered into this lasting digital sanctuary.
+            </div>
+          </div>
+
           <!-- Model Picker & Generate Bar -->
           <div class="form-row" style="align-items: flex-end; margin-bottom: 20px;">
             <div class="form-group" style="min-width: 200px; flex: 1;">
@@ -417,12 +489,6 @@
         <button id="btn-start-new" class="btn btn-secondary">+ Create Another Ofrenda</button>
       </div>
     </section>
-
-      <div class="wizard-footer">
-        <button id="btn-back-4" class="btn btn-secondary">&larr; Back</button>
-        <button id="btn-start-new" class="btn btn-secondary">+ Create Another Ofrenda</button>
-      </div>
-    </section>
   </main>
 
   <!-- My Ofrendas Drawer Backdrop -->
@@ -441,6 +507,10 @@
     </div>
   </div>
 
+  <!-- Local 3D WebGL Altar, Procedural Audio & Interactive Scripts (100% Offline) -->
+  <script src="/vendor/three.min.js"></script>
+  <script src="/audio.js"></script>
+  <script src="/world3d.js"></script>
   <script src="/particles.js"></script>
   <script src="/tilt.js"></script>
   <script src="/app.js"></script>
