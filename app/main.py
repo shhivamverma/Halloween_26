@@ -72,9 +72,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """Return friendly JSON error for any unexpected server exceptions."""
+    logger.error("Unhandled server exception on %s %s: %s", request.method, request.url.path, exc, exc_info=True)
+    msg = str(exc) or "An internal server error occurred."
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"error": "An internal server error occurred."},
+        content={"error": msg, "detail": msg},
     )
 
 
@@ -427,6 +429,15 @@ def synthesize_voice(id: uuid.UUID, request: VoiceSynthesisRequest):
         return profile
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+    except (RuntimeError, MemoryError) as run_err:
+        logger.error("Voice synthesis runtime error: %s", run_err, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(run_err))
+    except Exception as exc:
+        logger.error("Voice synthesis unexpected error: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Voice synthesis error: {str(exc) or 'Internal error during voice generation.'}",
+        )
 
 
 @app.post("/api/ofrendas/{id}/voice/convert")
@@ -489,6 +500,15 @@ def convert_speech_to_speech(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+    except (RuntimeError, MemoryError) as run_err:
+        logger.error("Voice conversion runtime error: %s", run_err, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(run_err))
+    except Exception as exc:
+        logger.error("Voice conversion unexpected error: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Voice conversion error: {str(exc) or 'Internal error during speech conversion.'}",
+        )
 
 
 @app.get("/api/ofrendas/{id}/voice/audio")

@@ -57,6 +57,24 @@ class VoiceService:
         is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("VOICE_ENGINE") == "mock")
 
         if engine is not None and engine != self._mock:
+            from app.voice.xtts_engine import get_system_resources
+
+            res = get_system_resources()
+            cgroup_limit = res.get("cgroup_limit_mb")
+            if cgroup_limit is not None and cgroup_limit < 1500:
+                return {
+                    "available": False,
+                    "engine": engine.name,
+                    "active_engine": engine.name,
+                    "status": "insufficient_ram",
+                    "cgroup_limit_mb": cgroup_limit,
+                    "supported_languages": engine.supported_languages,
+                    "message": (
+                        f"Render container memory is constrained to {cgroup_limit:.0f} MB (Render Free Tier). "
+                        "XTTS-v2 neural voice synthesis requires at least 2,048 MB (2 GB) RAM. "
+                        "Please upgrade your Render service to the 'Starter' plan (2 GB RAM) to enable neural voice synthesis."
+                    ),
+                }
             return {
                 "available": True,
                 "engine": engine.name,

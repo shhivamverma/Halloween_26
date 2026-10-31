@@ -324,12 +324,56 @@ function setLanguage(lang) {
   }
 }
 
+// Robust Response Parser to eliminate "Unexpected end of JSON input" on proxy/server errors
+async function parseJsonResponse(res, defaultError = "Operation failed") {
+  let responseText = "";
+  try {
+    responseText = await res.text();
+  } catch (readErr) {
+    throw new Error(`${defaultError}: Unable to read response from server.`);
+  }
+
+  let data = null;
+  if (responseText && responseText.trim().length > 0) {
+    try {
+      data = JSON.parse(responseText);
+    } catch (_) {
+      // Body is not JSON (e.g. HTML 502/504 or plain text 500 from reverse proxy)
+      if (!res.ok) {
+        const clean = responseText.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 240);
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+          throw new Error(
+            `Server error (HTTP ${res.status}): The backend process terminated or timed out. ` +
+            `If running on Render Free Tier (512 MB RAM), neural models exceed available memory. Upgrade to Starter (2 GB) plan in the Render dashboard.`
+          );
+        }
+        throw new Error(`${defaultError} (HTTP ${res.status}): ${clean || res.statusText}`);
+      }
+    }
+  }
+
+  if (!res.ok) {
+    if (!data) {
+      if (res.status === 502 || res.status === 503 || res.status === 504) {
+        throw new Error(
+          `Server error (HTTP ${res.status}): The backend process terminated or timed out. ` +
+          `If running on Render Free Tier (512 MB RAM), neural models exceed available memory. Upgrade to Starter (2 GB) plan in the Render dashboard.`
+        );
+      }
+      throw new Error(`${defaultError} (HTTP ${res.status}: ${res.statusText || "Empty response from server"})`);
+    }
+    const errDetail = data.detail || data.error || data.message || defaultError;
+    throw new Error(typeof errDetail === "string" ? errDetail : JSON.stringify(errDetail));
+  }
+
+  return data;
+}
+
 // Health Check & Model Discovery
 async function checkHealth() {
   try {
     const res = await fetch("/api/health");
-    if (!res.ok) throw new Error("Health check failed");
-    const data = await res.json();
+    const data = await parseJsonResponse(res, "Health check failed");
 
     elements.statusBadge.classList.remove("error");
     if (data.ollama) {
@@ -347,6 +391,12 @@ async function checkHealth() {
         elements.voiceEngineBadge.style.color = "var(--success)";
         if (noticeText) {
           noticeText.innerHTML = `<strong>✓ Local Neural Voice Conversion Ready:</strong> Engine <code>${data.voice.active_engine}</code> is active. Speech-to-Speech conversion runs offline on device.`;
+        }
+      } else if (data.voice.status === "insufficient_ram") {
+        elements.voiceEngineBadge.textContent = "Requires 2GB RAM";
+        elements.voiceEngineBadge.style.color = "var(--candle-gold)";
+        if (noticeText) {
+          noticeText.innerHTML = `<strong>⚠️ Render Plan Memory Limit:</strong> Container memory is limited to ${data.voice.cgroup_limit_mb || 512} MB (Render Free Tier). XTTS-v2 neural voice synthesis requires at least 2 GB RAM. Upgrade your Render service to the <strong>Starter</strong> (2 GB) plan in the Render dashboard to synthesize voice.`;
         }
       } else {
         elements.voiceEngineBadge.textContent = "Model Setup Needed";
@@ -584,10 +634,7 @@ async function handlePhotoSelected(e) {
       method: "POST",
       body: formData,
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Failed to upload photo");
-    }
+    await parseJsonResponse(res, "Failed to upload photo");
   } catch (err) {
     alert("Photo upload error: " + err.message);
   }
@@ -863,11 +910,7 @@ async function processRecordedAudio() {
       method: "POST",
       body: formData,
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Audio upload failed");
-    }
-    const data = await res.json();
+    const data = await parseJsonResponse(res, "Audio upload failed");
     elements.recordStatusMsg.textContent = "";
 
     if (data.text) {
@@ -898,8 +941,7 @@ async function generateRemembrance() {
       body: JSON.stringify({ model: selectedModel }),
     });
 
-    if (!res.ok) throw new Error("Remembrance generation failed");
-    const data = await res.json();
+    const data = await parseJsonResponse(res, "Remembrance generation failed");
 
     elements.textareaRemembrance.value = data.remembrance || "";
     updatePreviewIframe();
@@ -978,10 +1020,7 @@ async function handleVoiceRefSelected(e) {
       method: "POST",
       body: formData,
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || err.detail || "Failed to upload reference audio");
-    }
+    await parseJsonResponse(res, "Failed to upload reference audio");
     elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
     elements.voiceRefStatus.style.color = "var(--success)";
 
@@ -1034,10 +1073,7 @@ async function handleUseStep3Audio() {
       method: "POST",
       body: formData,
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || err.detail || "Failed to use Step 3 audio");
-    }
+    await parseJsonResponse(res, "Failed to use Step 3 audio");
     elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
     elements.voiceRefStatus.style.color = "var(--success)";
 
@@ -1045,7 +1081,7 @@ async function handleUseStep3Audio() {
     const previewPlayer = document.getElementById("voice-ref-audio-player");
     const previewContainer = document.getElementById("voice-ref-preview-container");
     if (previewPlayer && previewContainer) {
-      previewPlayer.src = URL.createObjectURL(file);
+      previewPlayer.src = URL.createObjectURL(audioBlob);
       previewContainer.style.display = "block";
     }
   } catch (err) {
@@ -1098,16 +1134,11 @@ async function synthesizeVoice() {
       }),
     });
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || err.error || "Voice synthesis failed");
-    }
-
-    const data = await res.json();
+    const data = await parseJsonResponse(res, "Voice synthesis failed");
 
     elements.voiceResultBox.style.display = "block";
     elements.voiceAudioPlayer.src = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
-    if (data.synthesized_duration_s) {
+    if (data && data.synthesized_duration_s) {
       elements.voiceDurationInfo.textContent = `Duration: ${data.synthesized_duration_s.toFixed(1)}s • Model: ${data.model_used || "Local"}`;
     }
 
@@ -1646,10 +1677,7 @@ function initEventListeners() {
           body: formData,
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || "Voice conversion failed");
-        }
+        const data = await parseJsonResponse(res, "Voice conversion failed");
 
         if (data.status === "unavailable") {
           alert("Local Neural Model Notice: " + data.message);

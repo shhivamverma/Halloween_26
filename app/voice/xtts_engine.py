@@ -52,21 +52,52 @@ def _patch_torchaudio_loader_if_needed():
         logger.debug("Audio loader patch skipped: %s", exc)
 
 
+def get_effective_cgroup_limit_mb() -> Optional[float]:
+    """Detect Docker / Render container cgroup memory limits on Linux."""
+    # cgroup v2
+    cg2_path = Path("/sys/fs/cgroup/memory.max")
+    if cg2_path.exists():
+        try:
+            val = cg2_path.read_text().strip()
+            if val != "max":
+                bytes_limit = int(val)
+                return round(bytes_limit / (1024 * 1024), 1)
+        except Exception:
+            pass
+
+    # cgroup v1
+    cg1_path = Path("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+    if cg1_path.exists():
+        try:
+            val = cg1_path.read_text().strip()
+            bytes_limit = int(val)
+            if bytes_limit < (1 << 50):
+                return round(bytes_limit / (1024 * 1024), 1)
+        except Exception:
+            pass
+
+    return None
+
+
 def get_system_resources() -> dict:
     """Inspect system RAM and disk availability for model inference."""
     try:
         import psutil
 
         vm = psutil.virtual_memory()
+        cgroup_limit_mb = get_effective_cgroup_limit_mb()
+        total_ram_mb = cgroup_limit_mb if cgroup_limit_mb is not None else round(vm.total / (1024 * 1024), 1)
+
         data_dir = os.environ.get("DATA_DIR", ".")
         disk = psutil.disk_usage(data_dir if Path(data_dir).exists() else ".")
         return {
-            "ram_total_mb": round(vm.total / (1024 * 1024), 1),
+            "ram_total_mb": total_ram_mb,
             "ram_available_mb": round(vm.available / (1024 * 1024), 1),
             "disk_free_mb": round(disk.free / (1024 * 1024), 1),
+            "cgroup_limit_mb": cgroup_limit_mb,
         }
     except Exception:
-        return {"ram_total_mb": 0.0, "ram_available_mb": 0.0, "disk_free_mb": 0.0}
+        return {"ram_total_mb": 0.0, "ram_available_mb": 0.0, "disk_free_mb": 0.0, "cgroup_limit_mb": None}
 
 
 class XTTSv2Engine(VoiceSynthesisEngine):
@@ -146,11 +177,25 @@ class XTTSv2Engine(VoiceSynthesisEngine):
 
             res = get_system_resources()
             logger.info(
-                "XTTS-v2 initialization starting (RAM available: %.0fMB / %.0fMB, Disk free: %.0fMB)...",
-                res["ram_available_mb"],
+                "XTTS-v2 initialization starting (Effective RAM: %.0fMB, Available: %.0fMB, Disk free: %.0fMB, cgroup limit: %s)...",
                 res["ram_total_mb"],
+                res["ram_available_mb"],
                 res["disk_free_mb"],
+                res["cgroup_limit_mb"],
             )
+
+            # Prevent Linux kernel OOM killer (SIGKILL 137) on memory-constrained containers.
+            # Loading XTTS-v2's 1.86GB model into RAM requires at least 2,048 MB (2 GB) RAM.
+            # Render Free Tier provides 512MB RAM without swap. Attempting torch.load on 512MB
+            # immediately causes the Linux kernel OOM killer to terminate uvicorn with SIGKILL,
+            # resulting in an abrupt TCP disconnect and empty 502 Bad Gateway responses.
+            if res["cgroup_limit_mb"] is not None and res["cgroup_limit_mb"] < 1500:
+                raise RuntimeError(
+                    f"XTTS-v2 neural voice synthesis requires at least 2,048 MB (2 GB) of RAM. "
+                    f"This container is restricted to {res['cgroup_limit_mb']:.0f} MB (Render Free Tier limit is 512 MB). "
+                    "Loading the neural weights would cause the container process to be terminated by the Linux OOM killer. "
+                    "To enable neural voice recreation, please upgrade your Render service to the 'Starter' plan (2 GB RAM) or higher in the Render dashboard."
+                )
 
             # Ensure online lookups are enabled during model download and verification
             os.environ["HF_HUB_OFFLINE"] = "0"
