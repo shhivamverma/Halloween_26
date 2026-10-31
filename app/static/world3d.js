@@ -47,17 +47,20 @@
 
   // Camera Targets for Step Choreography
   const CAMERA_VIEWS = {
-    hero: { pos: new THREE.Vector3(0, 1.85, 7.0), target: new THREE.Vector3(0, 1.25, 0) },
+    intro: { pos: new THREE.Vector3(0, 2.3, 7.8), target: new THREE.Vector3(0, 1.25, 0) },
+    hero: { pos: new THREE.Vector3(0, 1.85, 6.8), target: new THREE.Vector3(0, 1.25, 0) },
     step1: { pos: new THREE.Vector3(-1.4, 2.0, 5.4), target: new THREE.Vector3(0.2, 1.65, 0) },
     step2: { pos: new THREE.Vector3(1.5, 1.45, 5.0), target: new THREE.Vector3(-0.3, 0.95, 0) },
-    step3: { pos: new THREE.Vector3(0, 1.6, 4.8), target: new THREE.Vector3(0, 1.35, 0) },
-    step4: { pos: new THREE.Vector3(0, 1.9, 6.2), target: new THREE.Vector3(0, 1.4, 0) },
+    step3: { pos: new THREE.Vector3(-1.3, 1.75, 4.8), target: new THREE.Vector3(0.3, 1.45, 0) },
+    step4: { pos: new THREE.Vector3(1.3, 1.65, 4.8), target: new THREE.Vector3(-0.2, 1.4, 0) },
+    step5: { pos: new THREE.Vector3(0, 1.55, 4.5), target: new THREE.Vector3(0, 1.35, 0) },
+    step6: { pos: new THREE.Vector3(0, 1.9, 6.2), target: new THREE.Vector3(0, 1.4, 0) },
   };
 
-  let currentViewName = "hero";
-  let targetCamPos = CAMERA_VIEWS.hero.pos.clone();
-  let targetLookAt = CAMERA_VIEWS.hero.target.clone();
-  let currentLookAt = CAMERA_VIEWS.hero.target.clone();
+  let currentViewName = "intro";
+  let targetCamPos = CAMERA_VIEWS.intro.pos.clone();
+  let targetLookAt = CAMERA_VIEWS.intro.target.clone();
+  let currentLookAt = CAMERA_VIEWS.intro.target.clone();
 
   // Mouse Parallax
   const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
@@ -566,6 +569,276 @@
   const emberParticles = new THREE.Points(emberGeo, emberMat);
   scene.add(emberParticles);
 
+  // --- PROCEDURAL 3D HUMAN HANDS (Anatomical proportions & articulated joints) ---
+  const skinMaterial = new THREE.MeshStandardMaterial({
+    color: 0xdfab8e,
+    roughness: 0.65,
+    metalness: 0.05,
+    emissive: 0x221108,
+    emissiveIntensity: 0.15,
+  });
+
+  function buildHumanHand(isLeft = false) {
+    const handRoot = new THREE.Group();
+
+    // Forearm / Wrist
+    const forearmGeo = new THREE.CylinderGeometry(0.13, 0.16, 0.75, 16);
+    const forearm = new THREE.Mesh(forearmGeo, skinMaterial);
+    forearm.position.y = 0.55;
+    handRoot.add(forearm);
+
+    // Palm
+    const palmGeo = new THREE.BoxGeometry(0.42, 0.48, 0.14, 4, 4, 4);
+    const palm = new THREE.Mesh(palmGeo, skinMaterial);
+    palm.position.y = 0.08;
+    handRoot.add(palm);
+
+    // Finger definitions: [xOffset, baseAngleZ, length, radius]
+    const fingerDefs = [
+      { name: "index", x: (isLeft ? 0.14 : -0.14), zRot: 0.03, len: 0.22, rad: 0.042 },
+      { name: "middle", x: (isLeft ? 0.05 : -0.05), zRot: 0.0, len: 0.25, rad: 0.044 },
+      { name: "ring", x: (isLeft ? -0.05 : 0.05), zRot: -0.03, len: 0.22, rad: 0.042 },
+      { name: "pinky", x: (isLeft ? -0.14 : 0.14), zRot: -0.08, len: 0.18, rad: 0.036 },
+    ];
+
+    const fingerJoints = [];
+
+    fingerDefs.forEach((fd) => {
+      // Proximal joint (attached to palm)
+      const pJoint = new THREE.Group();
+      pJoint.position.set(fd.x, -0.18, 0.02);
+      pJoint.rotation.z = isLeft ? fd.zRot : -fd.zRot;
+      palm.add(pJoint);
+
+      const pMesh = new THREE.Mesh(new THREE.CylinderGeometry(fd.rad * 0.95, fd.rad, fd.len * 0.45, 10), skinMaterial);
+      pMesh.position.y = -fd.len * 0.225;
+      pJoint.add(pMesh);
+
+      // Intermediate joint
+      const mJoint = new THREE.Group();
+      mJoint.position.y = -fd.len * 0.45;
+      pJoint.add(mJoint);
+
+      const mMesh = new THREE.Mesh(new THREE.CylinderGeometry(fd.rad * 0.85, fd.rad * 0.95, fd.len * 0.35, 10), skinMaterial);
+      mMesh.position.y = -fd.len * 0.175;
+      mJoint.add(mMesh);
+
+      // Distal joint & rounded fingertip
+      const dJoint = new THREE.Group();
+      dJoint.position.y = -fd.len * 0.35;
+      mJoint.add(dJoint);
+
+      const dMesh = new THREE.Mesh(new THREE.CylinderGeometry(fd.rad * 0.7, fd.rad * 0.85, fd.len * 0.25, 10), skinMaterial);
+      dMesh.position.y = -fd.len * 0.125;
+      dJoint.add(dMesh);
+
+      const tipMesh = new THREE.Mesh(new THREE.SphereGeometry(fd.rad * 0.7, 8, 8), skinMaterial);
+      tipMesh.position.y = -fd.len * 0.25;
+      dJoint.add(tipMesh);
+
+      fingerJoints.push({ pJoint, mJoint, dJoint });
+    });
+
+    // Articulated Thumb
+    const thumbRoot = new THREE.Group();
+    thumbRoot.position.set(isLeft ? 0.24 : -0.24, -0.02, 0.04);
+    thumbRoot.rotation.z = isLeft ? 0.6 : -0.6;
+    thumbRoot.rotation.y = isLeft ? -0.4 : 0.4;
+    palm.add(thumbRoot);
+
+    const thumb1 = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.2, 10), skinMaterial);
+    thumb1.position.y = -0.1;
+    thumbRoot.add(thumb1);
+
+    const thumbJoint2 = new THREE.Group();
+    thumbJoint2.position.y = -0.2;
+    thumbRoot.add(thumbJoint2);
+
+    const thumb2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.048, 0.16, 10), skinMaterial);
+    thumb2.position.y = -0.08;
+    thumbJoint2.add(thumb2);
+
+    const thumbTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), skinMaterial);
+    thumbTip.position.y = -0.16;
+    thumbJoint2.add(thumbTip);
+
+    // Controller method to interpolate fingers between cupped holding and released open poses
+    handRoot.userData = {
+      setPose(progress) {
+        // progress: 0.0 = cupped hold; 1.0 = fully open graceful release
+        const curlX = THREE.MathUtils.lerp(1.15, 0.1, progress);
+        const curlThumb = THREE.MathUtils.lerp(0.85, 0.15, progress);
+
+        fingerJoints.forEach((fj) => {
+          fj.pJoint.rotation.x = curlX * 0.55;
+          fj.mJoint.rotation.x = curlX * 0.45;
+          fj.dJoint.rotation.x = curlX * 0.35;
+        });
+
+        thumbRoot.rotation.x = curlThumb * 0.6;
+        thumbJoint2.rotation.x = curlThumb * 0.5;
+      },
+    };
+
+    handRoot.userData.setPose(0.0);
+    return handRoot;
+  }
+
+  // Hands Group for the Intro Sequence
+  const introHandsGroup = new THREE.Group();
+  const leftHand = buildHumanHand(true);
+  const rightHand = buildHumanHand(false);
+  leftHand.position.set(-0.38, 4.4, 4.0);
+  leftHand.rotation.set(0.4, 0.35, 0.25);
+  rightHand.position.set(0.38, 4.4, 4.0);
+  rightHand.rotation.set(0.4, -0.35, -0.25);
+
+  introHandsGroup.add(leftHand);
+  introHandsGroup.add(rightHand);
+  introHandsGroup.visible = false;
+  scene.add(introHandsGroup);
+
+  // --- OFFERING PETALS (Held in hands, released in Phase A) ---
+  const OFFERING_PETAL_COUNT = 34;
+  const offeringPetals = [];
+  const offeringPetalsGroup = new THREE.Group();
+  scene.add(offeringPetalsGroup);
+
+  for (let i = 0; i < OFFERING_PETAL_COUNT; i++) {
+    const mat = petalMaterials[i % petalMaterials.length];
+    const petal = new THREE.Mesh(petalGeo, mat);
+    petal.scale.setScalar(0.9);
+    petal.visible = false;
+    petal.userData = {
+      active: false,
+      vy: 0,
+      vx: 0,
+      vz: 0,
+      rotX: 0,
+      rotY: 0,
+      rotZ: 0,
+      swayRate: 0,
+      swayAmp: 0,
+      phase: 0,
+      landed: false,
+      targetY: 0.72 + Math.random() * 0.35,
+    };
+    offeringPetalsGroup.add(petal);
+    offeringPetals.push(petal);
+  }
+
+  function initOfferingPetalsInHands() {
+    offeringPetals.forEach((p, idx) => {
+      p.visible = true;
+      p.userData.active = true;
+      p.userData.landed = false;
+      p.userData.vy = -0.005 - Math.random() * 0.006;
+      p.userData.vx = (Math.random() - 0.5) * 0.012;
+      p.userData.vz = (Math.random() - 0.5) * 0.01;
+      p.userData.rotX = (Math.random() - 0.5) * 0.05;
+      p.userData.rotY = (Math.random() - 0.5) * 0.05;
+      p.userData.rotZ = (Math.random() - 0.5) * 0.05;
+      p.userData.swayRate = 0.04 + Math.random() * 0.03;
+      p.userData.swayAmp = 0.01 + Math.random() * 0.012;
+      p.userData.phase = Math.random() * Math.PI * 2;
+
+      // Position clustered between the cupped palms
+      p.position.set(
+        (Math.random() - 0.5) * 0.32,
+        2.05 + (Math.random() - 0.5) * 0.12,
+        3.95 + (Math.random() - 0.5) * 0.15
+      );
+      p.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    });
+  }
+
+  function updateFallingOfferingPetals(delta) {
+    offeringPetals.forEach((p) => {
+      if (!p.userData.active || p.userData.landed) return;
+
+      p.userData.vy -= 0.00035; // Gentle downward gravity
+      p.position.y += p.userData.vy;
+      p.userData.phase += p.userData.swayRate;
+      p.position.x += Math.sin(p.userData.phase) * p.userData.swayAmp + p.userData.vx;
+      p.position.z += p.userData.vz;
+
+      p.rotation.x += p.userData.rotX;
+      p.rotation.y += p.userData.rotY;
+      p.rotation.z += p.userData.rotZ;
+
+      // Settle on the altar
+      if (p.position.y <= p.userData.targetY) {
+        p.position.y = p.userData.targetY;
+        p.userData.landed = true;
+        p.rotation.x = Math.PI * 0.5 + (Math.random() - 0.5) * 0.2;
+      }
+    });
+  }
+
+  // --- VOLUMETRIC GOLDEN LIGHT RAYS & CENTER ALTAR BLOOM ---
+  const altarBloomLight = new THREE.PointLight(PALETTE.antiqueGold, 0.0, 9.0, 1.8);
+  altarBloomLight.position.set(0, 1.35, 0.2);
+  altarGroup.add(altarBloomLight);
+
+  const volumetricRaysGroup = new THREE.Group();
+  volumetricRaysGroup.position.set(0, 1.0, -0.2);
+
+  const rayMat = new THREE.MeshBasicMaterial({
+    color: 0xffd166,
+    transparent: true,
+    opacity: 0.0,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+
+  const rayCount = 8;
+  for (let i = 0; i < rayCount; i++) {
+    const angle = (i / rayCount) * Math.PI;
+    const rayPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 4.2), rayMat);
+    rayPlane.position.y = 1.8;
+    rayPlane.rotation.y = angle;
+    rayPlane.rotation.z = (Math.random() - 0.5) * 0.35;
+    volumetricRaysGroup.add(rayPlane);
+  }
+  scene.add(volumetricRaysGroup);
+
+  // --- CINEMATIC MEMORIAL INTRO ANIMATION CONTROLLER ---
+  let introSequenceActive = false;
+  let introSequenceStartTime = 0;
+  let introOnCompleteCallback = null;
+  let introPhase = 0; // 0 = idle, 1 = Phase A, 2 = Phase B, 3 = Phase C
+
+  window.startMemorialIntroSequence = function (onComplete) {
+    introSequenceActive = true;
+    introSequenceStartTime = clock.getElapsedTime();
+    introOnCompleteCallback = onComplete;
+    introPhase = 1;
+    introHandsGroup.visible = true;
+
+    // Reset hands pose and position
+    leftHand.userData.setPose(0.0);
+    rightHand.userData.setPose(0.0);
+    leftHand.position.set(-0.38, 4.4, 4.0);
+    rightHand.position.set(0.38, 4.4, 4.0);
+
+    // Reset offering petals
+    initOfferingPetalsInHands();
+
+    // Reset bloom light and rays
+    altarBloomLight.intensity = 0.0;
+    rayMat.opacity = 0.0;
+
+    // Camera targets Phase A close-in
+    targetCamPos.set(0, 1.95, 5.0);
+    targetLookAt.set(0, 1.25, 0);
+
+    // Play soft sound cue
+    if (window.OfrendaAudio) {
+      window.OfrendaAudio.playIntroFanfare();
+    }
+  };
+
   // --- WINDOW RESIZE & MOUSE EVENTS ---
   function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -651,6 +924,57 @@
     currentLookAt.z += (targetLookAt.z - currentLookAt.z) * 0.04;
     camera.lookAt(currentLookAt);
 
+    // Intro Sequence Phase Progression
+    if (introSequenceActive) {
+      const elapsed = time - introSequenceStartTime;
+
+      if (elapsed < 3.2) {
+        // Phase A: Hands descent & Petal release
+        introPhase = 1;
+        const descentProgress = Math.min(1.0, elapsed / 1.5);
+        const handY = THREE.MathUtils.lerp(4.4, 2.15, descentProgress);
+        leftHand.position.y = handY;
+        rightHand.position.y = handY;
+
+        if (elapsed > 1.4) {
+          const openProgress = Math.min(1.0, (elapsed - 1.4) / 1.1);
+          leftHand.userData.setPose(openProgress);
+          rightHand.userData.setPose(openProgress);
+          updateFallingOfferingPetals(delta);
+        }
+      } else if (elapsed < 5.5) {
+        // Phase B: Bloom illumination, volumetric light rays & warm glow
+        introPhase = 2;
+        const retreatProgress = Math.min(1.0, (elapsed - 3.2) / 1.6);
+        leftHand.position.y = THREE.MathUtils.lerp(2.15, 4.8, retreatProgress);
+        rightHand.position.y = THREE.MathUtils.lerp(2.15, 4.8, retreatProgress);
+        if (retreatProgress >= 1.0) introHandsGroup.visible = false;
+
+        updateFallingOfferingPetals(delta);
+
+        const bloomProgress = Math.min(1.0, (elapsed - 3.2) / 1.4);
+        altarBloomLight.intensity = THREE.MathUtils.lerp(0.0, 4.5, bloomProgress);
+        rayMat.opacity = Math.min(0.35, bloomProgress * 0.35) * (0.85 + Math.sin(time * 3.5) * 0.15);
+        volumetricRaysGroup.rotation.y += 0.003;
+
+        targetCamPos.set(0, 1.85, 4.8);
+      } else if (elapsed < 7.0) {
+        // Phase C: Transition bloom & Reveal Main Website
+        introPhase = 3;
+        targetCamPos.set(0, 1.85, 4.4);
+        if (introOnCompleteCallback) {
+          const cb = introOnCompleteCallback;
+          introOnCompleteCallback = null;
+          cb();
+        }
+      } else {
+        introSequenceActive = false;
+        introHandsGroup.visible = false;
+        altarBloomLight.intensity = 1.8;
+        rayMat.opacity = 0.08;
+      }
+    }
+
     // 3. Candle Flame Shaders & Flickering Lights
     candleObjects.forEach((c) => {
       if (c.userData.lit && c.userData.flameMat.uniforms) {
@@ -707,3 +1031,4 @@
 
   animate();
 })();
+

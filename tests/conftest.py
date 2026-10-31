@@ -12,10 +12,11 @@ import app.config as config
 
 @pytest.fixture(autouse=True)
 def isolated_data_dir(tmp_path, monkeypatch):
-    """Ensure every test gets an isolated temporary DATA_DIR."""
+    """Ensure every test gets an isolated temporary DATA_DIR and test voice mock."""
     data_dir = tmp_path / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("DATA_DIR", str(data_dir))
+    monkeypatch.setenv("VOICE_ENGINE", "mock")
     return data_dir
 
 

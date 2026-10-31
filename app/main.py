@@ -429,6 +429,65 @@ def synthesize_voice(id: uuid.UUID, request: VoiceSynthesisRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
 
 
+@app.post("/api/ofrendas/{id}/voice/convert")
+def convert_speech_to_speech(
+    id: uuid.UUID,
+    file: UploadFile = File(...),
+    authorized_by: str = Form(...),
+    confirmed_permission: bool = Form(...),
+):
+    """Speech-to-Speech deceased voice conversion pipeline.
+
+    Accepts user microphone audio, transcribes it locally with faster-whisper,
+    and converts speech conditioned on the uploaded family-authorized reference voice.
+    """
+    if not confirmed_permission:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Affirmative family authorization is strictly required for voice conversion.",
+        )
+    if not authorized_by or not authorized_by.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The authorizing family member name must be provided.",
+        )
+
+    ext = Path(file.filename or "speech.wav").suffix.lower()
+    if ext not in (".wav", ".mp3", ".webm", ".ogg", ".m4a"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Unsupported audio format for microphone recording. Allowed: wav, mp3, webm, ogg, m4a.",
+        )
+
+    audio_bytes = file.file.read()
+    if len(audio_bytes) > get_max_audio_mb() * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Microphone audio recording exceeds {get_max_audio_mb()}MB limit.",
+        )
+
+    storage = get_storage()
+    consent = VoiceConsentRecord(
+        authorized_by=authorized_by.strip(),
+        confirmed_permission=True,
+    )
+
+    voice_service = get_voice_service()
+    try:
+        result = voice_service.convert_speech_to_speech(
+            ofrenda_id=str(id),
+            user_audio_bytes=audio_bytes,
+            ext=ext,
+            consent=consent,
+            storage=storage,
+        )
+        return result
+    except KeyError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
+    except ValueError as val_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+
+
 @app.get("/api/ofrendas/{id}/voice/audio")
 def get_synthesized_voice_audio(id: uuid.UUID):
     """Stream synthesized memorial voice recreation audio with byte-range support."""

@@ -7,57 +7,84 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <!-- 3D WebGL Altar Environment Canvas -->
+  <!-- 3D WebGL Altar Environment Canvas (Full Viewport) -->
   <canvas id="webgl-canvas" class="webgl-canvas" aria-hidden="true"></canvas>
 
-  <!-- Ambient 2D Petals & Embers Canvas (Layered accent) -->
+  <!-- Ambient 2D Petals & Embers Canvas (Accent Layer) -->
   <canvas id="ambient-canvas" class="ambient-canvas" aria-hidden="true"></canvas>
 
-  <!-- Header -->
-  <header class="app-header">
+  <!-- Golden Bloom Light Transition Overlay (Phase B/C) -->
+  <div id="transition-bloom" class="transition-bloom" aria-hidden="true"></div>
+
+  <!-- Cinematic 3D Intro Experience Overlay -->
+  <div class="intro-overlay" id="intro-overlay">
+    <div class="intro-card">
+      <div class="intro-symbol">💀🌼🕯️</div>
+      <h1 class="intro-title">OFFLINE OFRENDA KEEPER</h1>
+      <p class="intro-tagline">A Sacred Digital Memorial Sanctuary</p>
+      <p class="intro-quote">
+        &ldquo;They say you die twice: once when you take your final breath, and once when your name is spoken for the last time.&rdquo;
+      </p>
+      <div class="intro-action">
+        <button type="button" id="btn-enter-memory" class="btn-enter-memory">
+          <span class="btn-enter-icon">🕯️</span>
+          <span class="btn-enter-text">ENTER THE MEMORY</span>
+        </button>
+      </div>
+      <div class="intro-hint">Click to release sacred petals onto the altar</div>
+    </div>
+  </div>
+
+  <!-- Floating Memorial Soundscape Controls (Collapsed by default, never overlaps content) -->
+  <div class="sound-fab-wrapper">
+    <button type="button" id="btn-sound-fab" class="sound-fab-btn" title="Memorial Soundscape Controls" aria-expanded="false">
+      <span id="sound-fab-icon">🔇</span>
+      <span id="sound-fab-label" class="sound-fab-label">Sound: Off</span>
+    </button>
+    <div id="sound-modal" class="sound-modal" role="dialog" aria-modal="true" aria-label="Audio Mixer Settings">
+      <div class="sound-modal-header">
+        <div class="sound-modal-title">
+          <span>🕯️</span> <span>Memorial Soundscape</span>
+        </div>
+        <button type="button" id="btn-sound-modal-close" class="sound-modal-close" title="Close Settings">&times;</button>
+      </div>
+      <div class="sound-modal-body">
+        <div class="sound-master-toggle-row">
+          <span class="sound-status-label" id="sound-status-label">Procedural Audio: Muted</span>
+          <button type="button" id="btn-sound-master-toggle" class="btn btn-secondary btn-sm">Turn On</button>
+        </div>
+        <div class="sound-slider-item">
+          <div class="sound-slider-meta"><span>Master Volume</span><span id="lbl-vol-master">70%</span></div>
+          <input type="range" class="sound-range-input" id="slider-vol-master" min="0" max="1" step="0.05" value="0.7">
+        </div>
+        <div class="sound-slider-item">
+          <div class="sound-slider-meta"><span>Melody & Chords</span><span id="lbl-vol-music">50%</span></div>
+          <input type="range" class="sound-range-input" id="slider-vol-music" min="0" max="1" step="0.05" value="0.5">
+        </div>
+        <div class="sound-slider-item">
+          <div class="sound-slider-meta"><span>Wind & Candles</span><span id="lbl-vol-ambience">60%</span></div>
+          <input type="range" class="sound-range-input" id="slider-vol-ambience" min="0" max="1" step="0.05" value="0.6">
+        </div>
+        <div class="sound-slider-item">
+          <div class="sound-slider-meta"><span>Bells & Interactions</span><span id="lbl-vol-sfx">70%</span></div>
+          <input type="range" class="sound-range-input" id="slider-vol-sfx" min="0" max="1" step="0.05" value="0.7">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header (Clean, responsive, non-overlapping) -->
+  <header class="app-header" id="app-header">
     <div class="header-inner">
       <div class="brand-wrapper" id="brand-home-link" style="cursor: pointer;" title="Return to Memorial Sanctuary">
         <span class="brand-symbol" aria-hidden="true">💀🌼</span>
         <div class="brand-title" id="lbl-brand-title">Offline Ofrenda Keeper</div>
       </div>
       <div class="header-controls">
-        <!-- Memorial Soundscape Controls -->
-        <div class="sound-control-wrapper">
-          <button type="button" id="btn-sound-toggle" class="btn btn-sound" title="Toggle Memorial Soundscape" aria-expanded="false">
-            <span id="sound-icon">🔇</span> <span id="sound-label">Sound: Off</span>
-          </button>
-          <div id="sound-mixer-panel" class="sound-mixer-panel" role="region" aria-label="Audio Mixer">
-            <div class="mixer-header">
-              <span>Memorial Soundscape</span>
-              <span id="sound-mixer-close" style="cursor:pointer;" title="Close">&times;</span>
-            </div>
-            <div class="mixer-row">
-              <div class="mixer-label"><span>Master Volume</span><span id="lbl-vol-master">70%</span></div>
-              <input type="range" class="mixer-slider" id="slider-vol-master" min="0" max="1" step="0.05" value="0.7">
-            </div>
-            <div class="mixer-row">
-              <div class="mixer-label"><span>Music & Melody</span><span id="lbl-vol-music">50%</span></div>
-              <input type="range" class="mixer-slider" id="slider-vol-music" min="0" max="1" step="0.05" value="0.5">
-            </div>
-            <div class="mixer-row">
-              <div class="mixer-label"><span>Candles & Wind</span><span id="lbl-vol-ambience">60%</span></div>
-              <input type="range" class="mixer-slider" id="slider-vol-ambience" min="0" max="1" step="0.05" value="0.6">
-            </div>
-            <div class="mixer-row">
-              <div class="mixer-label"><span>Interactions & Bells</span><span id="lbl-vol-sfx">70%</span></div>
-              <input type="range" class="mixer-slider" id="slider-vol-sfx" min="0" max="1" step="0.05" value="0.7">
-            </div>
-          </div>
-        </div>
-
         <button type="button" id="btn-demo-quick" class="btn btn-demo-glow" title="Instant demonstration with fictional Abuela Rosa">✨ Demo (Abuela Rosa)</button>
-        <button type="button" id="btn-ambient-toggle" class="btn btn-secondary" title="Toggle 3D Ambient Petals">🌸 Petals: On</button>
-        <div id="status-badge" class="status-badge" role="status" aria-live="polite">
-          <span class="status-dot"></span>
-          <span id="status-text">Running locally. No internet needed</span>
-        </div>
+        <button type="button" id="btn-replay-intro" class="btn btn-secondary" title="Replay 3D Cinematic Entrance">🌸 Replay Intro</button>
+        <button type="button" id="btn-open-drawer" class="btn btn-secondary" aria-label="My saved ofrendas">My Ofrendas</button>
         <button id="btn-lang-toggle" class="btn btn-secondary" aria-label="Toggle language">ES / EN</button>
-        <button id="btn-open-drawer" class="btn btn-secondary" aria-label="My saved ofrendas">My Ofrendas</button>
       </div>
     </div>
   </header>
@@ -390,7 +417,7 @@
             <!-- Voice Reference Audio Source -->
             <div class="form-row" style="margin-top:16px; align-items:flex-end;">
               <div class="form-group" style="flex:1;">
-                <label for="input-voice-ref" id="lbl-voice-ref">Reference Voice Recording (WAV, MP3, M4A, WebM)</label>
+                <label for="input-voice-ref" id="lbl-voice-ref">Reference Voice Recording of Deceased (WAV, MP3, M4A, WebM)</label>
                 <input type="file" id="input-voice-ref" accept="audio/*">
                 <div id="voice-ref-status" class="field-hint" style="margin-top:4px;">No reference voice loaded yet.</div>
               </div>
@@ -401,8 +428,55 @@
               </div>
             </div>
 
+            <!-- Reference Audio Preview Player -->
+            <div id="voice-ref-preview-container" style="display:none; margin: 8px 0 16px 0;">
+              <div class="field-hint" style="margin-bottom:4px; color:var(--candle-gold);">Uploaded Reference Voice Preview:</div>
+              <audio id="voice-ref-audio-player" controls style="width:100%; height:36px;"></audio>
+            </div>
+
+            <!-- Speech-to-Speech Interactive Microphone Studio -->
+            <div class="s2s-studio-box">
+              <div class="s2s-studio-title">
+                <span>🎙️</span> <span>Microphone Speech-to-Speech Conversion</span>
+              </div>
+              <p class="field-hint" style="margin-bottom:10px;">
+                Speak a message into your microphone. The system converts your spoken words into the vocal timbre of the uploaded reference voice.
+              </p>
+
+              <!-- Live Microphone Waveform Visualizer -->
+              <div class="waveform-box">
+                <canvas id="s2s-waveform-canvas" class="s2s-waveform-canvas" width="600" height="70"></canvas>
+                <div id="s2s-mic-timer" class="s2s-mic-timer" style="display:none;">00:00</div>
+              </div>
+
+              <div class="s2s-controls-row">
+                <button type="button" id="btn-s2s-record" class="btn btn-secondary">
+                  <span>●</span> <span>Record My Speech</span>
+                </button>
+                <button type="button" id="btn-s2s-stop" class="btn btn-danger" style="display:none;">
+                  <span>■</span> <span>Stop Recording</span>
+                </button>
+                <button type="button" id="btn-s2s-convert" class="btn btn-primary" style="display:none;">
+                  <span>✨</span> <span>Convert Speech into Memorial Voice</span>
+                </button>
+              </div>
+
+              <div id="s2s-mic-status" class="field-hint" style="margin-top:6px;"></div>
+
+              <!-- User Recorded Audio Preview -->
+              <div id="s2s-user-preview-box" style="display:none; margin-top:12px;">
+                <span class="field-hint">Your Microphone Recording:</span>
+                <audio id="s2s-user-audio-player" controls style="width:100%; height:36px; margin-top:4px;"></audio>
+              </div>
+            </div>
+
+            <!-- Engine Transparency & Dependency Status Banner -->
+            <div id="voice-engine-card-notice" class="voice-engine-card-notice" style="margin-top:16px;">
+              <div id="voice-engine-status-text">Checking local neural voice conversion model status...</div>
+            </div>
+
             <!-- Voice Synthesis Settings & Trigger -->
-            <div class="form-row" style="align-items:flex-end; margin-top:8px;">
+            <div class="form-row" style="align-items:flex-end; margin-top:14px;">
               <div class="form-group" style="min-width:160px; flex:1; max-width:260px;">
                 <label for="select-voice-lang" id="lbl-voice-lang">Voice Language</label>
                 <select id="select-voice-lang">
@@ -416,7 +490,7 @@
               </div>
               <div class="form-group" style="flex:1;">
                 <button type="button" id="btn-synthesize-voice" class="btn btn-primary" style="min-width:210px; width:100%;">
-                  <span id="btn-synth-text">Synthesize Memorial Voice</span>
+                  <span id="btn-synth-text">Synthesize Remembrance Reading</span>
                 </button>
               </div>
             </div>

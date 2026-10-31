@@ -339,11 +339,21 @@ async function checkHealth() {
     }
 
     if (data.voice && elements.voiceEngineBadge) {
+      const noticeBox = document.getElementById("voice-engine-card-notice");
+      const noticeText = document.getElementById("voice-engine-status-text");
+
       if (data.voice.available) {
-        elements.voiceEngineBadge.textContent = `${data.voice.active_engine} (Local)`;
-        elements.voiceEngineBadge.style.color = "var(--candle-gold)";
+        elements.voiceEngineBadge.textContent = `✓ ${data.voice.active_engine || 'Neural'} Ready`;
+        elements.voiceEngineBadge.style.color = "var(--success)";
+        if (noticeText) {
+          noticeText.innerHTML = `<strong>✓ Local Neural Voice Conversion Ready:</strong> Engine <code>${data.voice.active_engine}</code> is active. Speech-to-Speech conversion runs offline on device.`;
+        }
       } else {
-        elements.voiceEngineBadge.textContent = "Voice Module Standby";
+        elements.voiceEngineBadge.textContent = "Model Setup Needed";
+        elements.voiceEngineBadge.style.color = "var(--candle-gold)";
+        if (noticeText) {
+          noticeText.innerHTML = `<strong>ℹ️ Neural Voice Recreation Model Not Installed:</strong> Genuine Speech-to-Speech voice conversion requires PyTorch and Coqui TTS. Install with: <code>pip install torch TTS</code>. In accordance with memorial integrity guidelines, synthetic sine wave beeps are disabled so you are never given artificial placeholders.`;
+        }
       }
     }
 
@@ -974,6 +984,14 @@ async function handleVoiceRefSelected(e) {
     }
     elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
     elements.voiceRefStatus.style.color = "var(--success)";
+
+    // Set preview player
+    const previewPlayer = document.getElementById("voice-ref-audio-player");
+    const previewContainer = document.getElementById("voice-ref-preview-container");
+    if (previewPlayer && previewContainer) {
+      previewPlayer.src = URL.createObjectURL(file);
+      previewContainer.style.display = "block";
+    }
   } catch (err) {
     alert("Reference upload error: " + err.message);
   }
@@ -1022,6 +1040,14 @@ async function handleUseStep3Audio() {
     }
     elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
     elements.voiceRefStatus.style.color = "var(--success)";
+
+    // Set preview player
+    const previewPlayer = document.getElementById("voice-ref-audio-player");
+    const previewContainer = document.getElementById("voice-ref-preview-container");
+    if (previewPlayer && previewContainer) {
+      previewPlayer.src = URL.createObjectURL(file);
+      previewContainer.style.display = "block";
+    }
   } catch (err) {
     alert("Audio error: " + err.message);
   }
@@ -1306,7 +1332,41 @@ function resetWizard() {
 
 // Event Listeners Initialization
 function initEventListeners() {
-  // 3D Immersive Hero Actions
+  // --- 3D CINEMATIC INTRO EXPERIENCE & HERO ACTIONS ---
+  const btnEnterMemory = document.getElementById("btn-enter-memory");
+  const introOverlay = document.getElementById("intro-overlay");
+  const transitionBloom = document.getElementById("transition-bloom");
+
+  if (btnEnterMemory) {
+    btnEnterMemory.addEventListener("click", () => {
+      if (introOverlay) introOverlay.classList.add("hidden");
+      if (window.startMemorialIntroSequence) {
+        window.startMemorialIntroSequence(() => {
+          if (transitionBloom) {
+            transitionBloom.classList.add("active");
+            setTimeout(() => {
+              transitionBloom.classList.remove("active");
+            }, 800);
+          }
+          const hero = document.getElementById("section-hero");
+          if (hero) hero.classList.remove("hidden");
+          goToStep(1);
+        });
+      } else {
+        goToStep(1);
+      }
+    });
+  }
+
+  const btnReplayIntro = document.getElementById("btn-replay-intro");
+  if (btnReplayIntro) {
+    btnReplayIntro.addEventListener("click", () => {
+      if (introOverlay) introOverlay.classList.remove("hidden");
+      if (window.setWorld3DStep) window.setWorld3DStep("intro");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
   const heroSection = document.getElementById("section-hero");
   const btnHeroStart = document.getElementById("btn-hero-start");
   if (btnHeroStart) {
@@ -1342,44 +1402,60 @@ function initEventListeners() {
     });
   }
 
-  // Memorial Soundscape Controls
-  const btnSoundToggle = document.getElementById("btn-sound-toggle");
-  const soundIcon = document.getElementById("sound-icon");
-  const soundLabel = document.getElementById("sound-label");
-  const soundMixerPanel = document.getElementById("sound-mixer-panel");
-  const soundMixerClose = document.getElementById("sound-mixer-close");
+  // --- FLOATING MEMORIAL SOUNDSCAPE CONTROLS (FAB & MODAL) ---
+  const btnSoundFab = document.getElementById("btn-sound-fab");
+  const soundFabIcon = document.getElementById("sound-fab-icon");
+  const soundFabLabel = document.getElementById("sound-fab-label");
+  const soundModal = document.getElementById("sound-modal");
+  const btnSoundModalClose = document.getElementById("btn-sound-modal-close");
+  const btnSoundMasterToggle = document.getElementById("btn-sound-master-toggle");
+  const soundStatusLabel = document.getElementById("sound-status-label");
 
-  function updateSoundUI() {
+  function updateFloatingSoundUI() {
     if (!window.OfrendaAudio) return;
     const active = window.OfrendaAudio.state.enabled;
-    if (btnSoundToggle) {
-      if (active) {
-        btnSoundToggle.classList.add("sound-active");
-        if (soundIcon) soundIcon.textContent = "🔊";
-        if (soundLabel) soundLabel.textContent = "Sound: On";
-      } else {
-        btnSoundToggle.classList.remove("sound-active");
-        if (soundIcon) soundIcon.textContent = "🔇";
-        if (soundLabel) soundLabel.textContent = "Sound: Off";
-      }
+    if (btnSoundFab) {
+      btnSoundFab.classList.toggle("sound-active", active);
+      if (soundFabIcon) soundFabIcon.textContent = active ? "🔊" : "🔇";
+      if (soundFabLabel) soundFabLabel.textContent = active ? "Sound: On" : "Sound: Off";
+    }
+    if (soundStatusLabel) {
+      soundStatusLabel.textContent = active ? "Procedural Audio: Active" : "Procedural Audio: Muted";
+    }
+    if (btnSoundMasterToggle) {
+      btnSoundMasterToggle.textContent = active ? "Mute" : "Turn On";
     }
   }
 
-  if (btnSoundToggle) {
-    btnSoundToggle.addEventListener("click", () => {
-      if (window.OfrendaAudio) {
-        window.OfrendaAudio.toggle();
-        updateSoundUI();
-        if (soundMixerPanel && window.OfrendaAudio.state.enabled) {
-          soundMixerPanel.classList.toggle("open");
-        }
+  if (btnSoundFab) {
+    btnSoundFab.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (soundModal) {
+        soundModal.classList.toggle("open");
       }
     });
   }
 
-  if (soundMixerClose && soundMixerPanel) {
-    soundMixerClose.addEventListener("click", () => {
-      soundMixerPanel.classList.remove("open");
+  if (btnSoundModalClose && soundModal) {
+    btnSoundModalClose.addEventListener("click", () => {
+      soundModal.classList.remove("open");
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (soundModal && soundModal.classList.contains("open")) {
+      if (!soundModal.contains(e.target) && !e.target.closest("#btn-sound-fab")) {
+        soundModal.classList.remove("open");
+      }
+    }
+  });
+
+  if (btnSoundMasterToggle) {
+    btnSoundMasterToggle.addEventListener("click", () => {
+      if (window.OfrendaAudio) {
+        window.OfrendaAudio.toggle();
+        updateFloatingSoundUI();
+      }
     });
   }
 
@@ -1418,6 +1494,180 @@ function initEventListeners() {
       if (window.OfrendaAudio) window.OfrendaAudio.setSfxVolume(val);
       const lbl = document.getElementById("lbl-vol-sfx");
       if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+    });
+  }
+
+  // --- SPEECH-TO-SPEECH (S2S) MICROPHONE RECORDING & CONVERSION ---
+  let s2sAudioCtx = null;
+  let s2sAnalyser = null;
+  let s2sMediaRecorder = null;
+  let s2sAudioChunks = [];
+  let s2sRecordedBlob = null;
+  let s2sWaveAnimId = null;
+  let s2sTimerInterval = null;
+  let s2sSeconds = 0;
+
+  const s2sWaveCanvas = document.getElementById("s2s-waveform-canvas");
+  const btnS2SRecord = document.getElementById("btn-s2s-record");
+  const btnS2SStop = document.getElementById("btn-s2s-stop");
+  const btnS2SConvert = document.getElementById("btn-s2s-convert");
+  const s2sMicTimer = document.getElementById("s2s-mic-timer");
+  const s2sMicStatus = document.getElementById("s2s-mic-status");
+  const s2sUserPreviewBox = document.getElementById("s2s-user-preview-box");
+  const s2sUserAudioPlayer = document.getElementById("s2s-user-audio-player");
+
+  function drawS2SWaveform() {
+    if (!s2sAnalyser || !s2sWaveCanvas) return;
+    const ctx2d = s2sWaveCanvas.getContext("2d");
+    const bufferLength = s2sAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    function render() {
+      s2sWaveAnimId = requestAnimationFrame(render);
+      s2sAnalyser.getByteTimeDomainData(dataArray);
+
+      ctx2d.fillStyle = "#09050e";
+      ctx2d.fillRect(0, 0, s2sWaveCanvas.width, s2sWaveCanvas.height);
+
+      ctx2d.lineWidth = 2.5;
+      ctx2d.strokeStyle = "#ffd166";
+      ctx2d.beginPath();
+
+      const sliceWidth = (s2sWaveCanvas.width * 1.0) / bufferLength;
+      let x = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = (v * s2sWaveCanvas.height) / 2;
+        if (i === 0) ctx2d.moveTo(x, y);
+        else ctx2d.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx2d.lineTo(s2sWaveCanvas.width, s2sWaveCanvas.height / 2);
+      ctx2d.stroke();
+    }
+    render();
+  }
+
+  if (btnS2SRecord) {
+    btnS2SRecord.addEventListener("click", async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        s2sAudioCtx = new AudioCtxClass();
+        const source = s2sAudioCtx.createMediaStreamSource(stream);
+        s2sAnalyser = s2sAudioCtx.createAnalyser();
+        s2sAnalyser.fftSize = 1024;
+        source.connect(s2sAnalyser);
+
+        s2sAudioChunks = [];
+        s2sMediaRecorder = new MediaRecorder(stream);
+        s2sMediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) s2sAudioChunks.push(e.data);
+        };
+        s2sMediaRecorder.onstop = () => {
+          stream.getTracks().forEach((track) => track.stop());
+          if (s2sWaveAnimId) cancelAnimationFrame(s2sWaveAnimId);
+          s2sRecordedBlob = new Blob(s2sAudioChunks, { type: "audio/webm" });
+          if (s2sUserAudioPlayer) {
+            s2sUserAudioPlayer.src = URL.createObjectURL(s2sRecordedBlob);
+            if (s2sUserPreviewBox) s2sUserPreviewBox.style.display = "block";
+          }
+          if (btnS2SConvert) btnS2SConvert.style.display = "inline-flex";
+          if (s2sMicStatus) s2sMicStatus.textContent = "✓ Speech recorded. Click 'Convert Speech into Memorial Voice' below.";
+        };
+
+        s2sMediaRecorder.start();
+        btnS2SRecord.style.display = "none";
+        btnS2SStop.style.display = "inline-flex";
+        if (s2sMicTimer) {
+          s2sMicTimer.style.display = "block";
+          s2sSeconds = 0;
+          s2sTimerInterval = setInterval(() => {
+            s2sSeconds++;
+            const m = String(Math.floor(s2sSeconds / 60)).padStart(2, "0");
+            const s = String(s2sSeconds % 60).padStart(2, "0");
+            s2sMicTimer.textContent = `${m}:${s}`;
+          }, 1000);
+        }
+        drawS2SWaveform();
+      } catch (err) {
+        if (s2sMicStatus) s2sMicStatus.textContent = `Microphone access denied: ${err.message}`;
+      }
+    });
+  }
+
+  if (btnS2SStop) {
+    btnS2SStop.addEventListener("click", () => {
+      if (s2sMediaRecorder && s2sMediaRecorder.state === "recording") {
+        s2sMediaRecorder.stop();
+      }
+      btnS2SStop.style.display = "none";
+      btnS2SRecord.style.display = "inline-flex";
+      if (s2sTimerInterval) clearInterval(s2sTimerInterval);
+      if (s2sMicTimer) s2sMicTimer.style.display = "none";
+    });
+  }
+
+  if (btnS2SConvert) {
+    btnS2SConvert.addEventListener("click", async () => {
+      if (!state.currentOfrendaId) {
+        alert("Please enter a name and start the ofrenda first.");
+        return;
+      }
+      if (!elements.checkVoiceConsent.checked) {
+        alert("Affirmative family permission is strictly required for memorial voice recreation.");
+        elements.checkVoiceConsent.focus();
+        return;
+      }
+      const authBy = elements.inputVoiceAuth.value.trim();
+      if (!authBy) {
+        alert("Please enter the authorizing family member's name.");
+        elements.inputVoiceAuth.focus();
+        return;
+      }
+      if (!s2sRecordedBlob) {
+        alert("Please record your microphone speech first.");
+        return;
+      }
+
+      btnS2SConvert.disabled = true;
+      btnS2SConvert.textContent = "⏳ Converting Speech...";
+      if (elements.voiceLoading) elements.voiceLoading.style.display = "block";
+
+      const formData = new FormData();
+      formData.append("file", s2sRecordedBlob, "mic_speech.webm");
+      formData.append("authorized_by", authBy);
+      formData.append("confirmed_permission", "true");
+
+      try {
+        const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/convert`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Voice conversion failed");
+        }
+
+        if (data.status === "unavailable") {
+          alert("Local Neural Model Notice: " + data.message);
+          if (s2sMicStatus) s2sMicStatus.textContent = `Spoken transcript: "${data.transcription}". (Local neural model installation needed).`;
+        } else {
+          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted successfully! Spoken transcript: "${data.transcription}"`;
+          if (elements.voiceResultBox) elements.voiceResultBox.style.display = "block";
+          if (elements.voiceAudioPlayer) {
+            elements.voiceAudioPlayer.src = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
+            elements.voiceAudioPlayer.play().catch(() => {});
+          }
+        }
+      } catch (err) {
+        alert("Voice Conversion Notice: " + err.message);
+      } finally {
+        btnS2SConvert.disabled = false;
+        btnS2SConvert.textContent = "✨ Convert Speech into Memorial Voice";
+        if (elements.voiceLoading) elements.voiceLoading.style.display = "none";
+      }
     });
   }
 

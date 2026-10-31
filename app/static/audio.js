@@ -448,6 +448,81 @@
       const notes = [440, 493.88, 554.37, 659.25];
       const pitch = notes[Math.floor(Math.random() * notes.length)];
       osc.frequency.setValueAtTime(pitch, audioNow);
+      gain.gain.setValueAtTime(0.04, audioNow);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioNow + 0.12);
+
+      osc.connect(gain);
+      gain.connect(sfxGain);
+
+      osc.start(audioNow);
+      osc.stop(audioNow + 0.12);
+    } catch (e) {}
+  }
+
+  // Cinematic Memorial Intro Fanfare (Phase B Swell)
+  function playIntroFanfare() {
+    if (!state.enabled || !ensureContext()) return;
+    try {
+      const now = ctx.currentTime;
+      const chord = [146.83, 220.00, 369.99, 554.37, 659.25];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.linearRampToValueAtTime(0.09 / chord.length, now + 1.2 + idx * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 5.5);
+
+        osc.connect(gain);
+        gain.connect(musicGain);
+
+        osc.start(now);
+        osc.stop(now + 5.6);
+      });
+
+      setTimeout(() => {
+        playChime(880.00, 3.5);
+      }, 1200);
+      setTimeout(() => {
+        playChime(1108.73, 4.0);
+      }, 2000);
+    } catch (e) {}
+  }
+
+  // Flower Scatter Sound (Phase A)
+  function playFlowerScatter() {
+    if (!state.enabled || !ensureContext()) return;
+    try {
+      const now = ctx.currentTime;
+      const duration = 0.8;
+      const bufferSize = Math.floor(ctx.sampleRate * duration);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.15;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(1400, now);
+      filter.Q.setValueAtTime(2.0, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.06, now + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ambientGain);
+
+      noise.start(now);
+    } catch (e) {}
+  }
 
       gain.gain.setValueAtTime(0.012, audioNow);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioNow + 0.15);
@@ -562,6 +637,7 @@
   window.OfrendaAudio = {
     state,
     toggleMasterAudio,
+    toggle: toggleMasterAudio,
     setMasterVolume,
     setMusicVolume,
     setSfxVolume,
@@ -572,6 +648,8 @@
     playButtonClick,
     playReveal,
     playTypeSound,
+    playIntroFanfare,
+    playFlowerScatter,
     updateUI,
   };
 
@@ -579,3 +657,4 @@
     updateUI();
   });
 })();
+
