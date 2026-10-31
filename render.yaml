@@ -11,5 +11,9 @@ services:
         value: base
       - key: HF_HUB_OFFLINE
         value: "1"
+      - key: COQUI_TOS_AGREED
+        value: "1"
+      - key: TTS_HOME
+        value: /app/data/tts_cache
       - key: PORT
         value: 10000

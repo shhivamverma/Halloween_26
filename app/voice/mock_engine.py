@@ -18,7 +18,7 @@ class MockVoiceEngine(VoiceSynthesisEngine):
 
     @property
     def supported_languages(self) -> List[str]:
-        return ["es", "en", "fr", "de", "it", "pt"]
+        return ["es", "en", "hi", "fr", "de", "it", "pt"]
 
     def is_available(self) -> bool:
         return True

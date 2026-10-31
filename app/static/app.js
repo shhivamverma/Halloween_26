@@ -1635,6 +1635,11 @@ function initEventListeners() {
       formData.append("authorized_by", authBy);
       formData.append("confirmed_permission", "true");
 
+      const s2sLangSelect = document.getElementById("select-s2s-lang");
+      if (s2sLangSelect && s2sLangSelect.value) {
+        formData.append("language", s2sLangSelect.value);
+      }
+
       try {
         const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/convert`, {
           method: "POST",

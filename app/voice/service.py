@@ -80,9 +80,9 @@ class VoiceService:
                 "engine": "neural-voice-conversion",
                 "active_engine": "none",
                 "status": "dependencies_missing",
-                "supported_languages": ["es", "en"],
-                "missing_dependencies": ["torch", "TTS"],
-                "install_instructions": "pip install torch TTS",
+                "supported_languages": ["es", "en", "hi"],
+                "missing_dependencies": ["torch", "coqui-tts"],
+                "install_instructions": "pip install torch coqui-tts",
                 "message": (
                     "Neural voice conversion dependencies ('torch' and 'TTS') are not installed in the local environment. "
                     "In accordance with our strict ethical standards, synthetic sine wave beeps are disabled."
@@ -194,10 +194,12 @@ class VoiceService:
         ext: str,
         consent: VoiceConsentRecord,
         storage: Storage,
+        target_language: Optional[str] = None,
     ) -> Dict:
         """Convert user recorded microphone audio into speech matching the reference voice profile.
 
         Pipeline: User mic audio -> Faster-Whisper transcription -> Reference voice conditioning -> Output audio.
+        Supports Hindi (hi), English (en), and Spanish (es).
         """
         if not consent.confirmed_permission:
             raise ValueError("Explicit family authorization is strictly required for voice conversion.")
@@ -216,14 +218,15 @@ class VoiceService:
 
         # 1. Transcribe user microphone audio locally with faster-whisper
         import app.transcribe as transcribe_mod
+        hint_lang = (target_language or record.language or "es").lower()
         try:
-            tx_result = transcribe_mod.transcribe(user_input_path, language_hint=record.language or "es")
+            tx_result = transcribe_mod.transcribe(user_input_path, language_hint=hint_lang)
             transcribed_text = tx_result.get("text", "").strip()
-            detected_lang = tx_result.get("language", record.language or "es")
+            detected_lang = tx_result.get("language", hint_lang)
         except Exception as ex:
             logger.warning("Whisper transcription of microphone speech failed: %s", ex)
             transcribed_text = ""
-            detected_lang = record.language or "es"
+            detected_lang = hint_lang
 
         engine = self.get_active_engine()
         if engine is None:
@@ -233,13 +236,18 @@ class VoiceService:
                 "transcription": transcribed_text,
                 "detected_language": detected_lang,
                 "message": (
-                    "Neural voice conversion model dependencies ('torch' and 'TTS'/'RVC') are not installed in the local Python environment. "
-                    "To perform genuine Speech-to-Speech voice conversion, install: pip install torch TTS. "
+                    "Neural voice conversion dependencies ('torch' and 'TTS'/'coqui-tts') are not installed in the local environment. "
+                    "To perform genuine Speech-to-Speech voice conversion, install: pip install torch coqui-tts. "
                     "Generating fake sine-wave beeps is disabled."
                 ),
             }
 
-        # 2. Run conversion using active engine
+        # 2. Determine target language for synthesis
+        chosen_lang = (target_language or detected_lang or record.language or "es").lower()
+        if chosen_lang not in engine.supported_languages:
+            chosen_lang = "es" if "es" in engine.supported_languages else engine.supported_languages[0]
+
+        # 3. Run conversion using active engine
         out_wav_path = voice_folder / "remembrance_synthesized.wav"
         text_to_synthesize = transcribed_text or record.remembrance or f"Memoria de {record.name}"
 
@@ -247,7 +255,7 @@ class VoiceService:
             text=text_to_synthesize,
             reference_audio_path=ref_path,
             output_path=out_wav_path,
-            language=detected_lang,
+            language=chosen_lang,
             speed=1.0,
         )
 
@@ -263,7 +271,7 @@ class VoiceService:
             ofrenda_id=ofrenda_id,
             wav_bytes=watermarked_wav,
             model_used=engine.name,
-            language=detected_lang,
+            language=chosen_lang,
             duration_s=duration_s,
         )
 
@@ -271,7 +279,7 @@ class VoiceService:
             "status": "success",
             "model_ready": True,
             "transcription": transcribed_text,
-            "detected_language": detected_lang,
+            "detected_language": chosen_lang,
             "duration_s": duration_s,
             "voice_profile": updated_record.voice_profile.model_dump(),
         }

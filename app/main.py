@@ -435,11 +435,13 @@ def convert_speech_to_speech(
     file: UploadFile = File(...),
     authorized_by: str = Form(...),
     confirmed_permission: bool = Form(...),
+    language: Optional[str] = Form(None),
 ):
     """Speech-to-Speech deceased voice conversion pipeline.
 
     Accepts user microphone audio, transcribes it locally with faster-whisper,
     and converts speech conditioned on the uploaded family-authorized reference voice.
+    Supports Hindi (hi), English (en), and Spanish (es).
     """
     if not confirmed_permission:
         raise HTTPException(
@@ -480,6 +482,7 @@ def convert_speech_to_speech(
             ext=ext,
             consent=consent,
             storage=storage,
+            target_language=language,
         )
         return result
     except KeyError:

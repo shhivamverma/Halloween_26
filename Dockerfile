@@ -6,11 +6,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DATA_DIR=/app/data \
     OLLAMA_HOST=http://host.docker.internal:11434 \
     WHISPER_MODEL=base \
-    HF_HOME=/root/.cache/huggingface
+    HF_HOME=/root/.cache/huggingface \
+    TTS_HOME=/app/data/tts_cache \
+    COQUI_TOS_AGREED=1
 
-# Install system audio dependencies (ffmpeg for faster-whisper decoding)
+# Install system audio dependencies (ffmpeg for whisper, libsndfile1 for torchaudio/soundfile)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    libsndfile1 \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -33,7 +36,7 @@ COPY app/ ./app/
 COPY scripts/ ./scripts/
 
 # Create persistent data volume directory
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/data/tts_cache
 
 EXPOSE 8000
 

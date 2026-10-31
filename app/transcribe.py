@@ -30,7 +30,7 @@ def transcribe(path: str | Path, language_hint: Optional[str] = None) -> Dict[st
     """
     start_t = time.perf_counter()
     model = get_whisper_model_instance()
-    lang = language_hint if language_hint in ("en", "es") else None
+    lang = language_hint if language_hint in ("en", "es", "hi") else None
 
     segments, info = model.transcribe(str(path), language=lang, beam_size=5)
 

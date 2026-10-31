@@ -43,7 +43,7 @@ class VoiceProfileMetadata(BaseModel):
 class VoiceSynthesisRequest(BaseModel):
     """Request payload to synthesize remembrance speech."""
 
-    language: Literal["en", "es", "fr", "de", "it", "pt"] = "es"
+    language: Literal["en", "es", "hi", "fr", "de", "it", "pt"] = "es"
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
     consent: Optional[VoiceConsentRecord] = None
     authorized_by: Optional[str] = None
@@ -69,7 +69,7 @@ class OfrendaCreate(BaseModel):
     relationship: Optional[str] = Field(None, max_length=40)
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
-    language: Literal["en", "es"] = "es"
+    language: Literal["en", "es", "hi"] = "es"
     foods: List[str] = Field(default_factory=list, max_length=12)
     drinks: List[str] = Field(default_factory=list, max_length=6)
     songs: List[str] = Field(default_factory=list, max_length=6)
@@ -98,7 +98,7 @@ class OfrendaUpdate(BaseModel):
     relationship: Optional[str] = Field(None, max_length=40)
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
-    language: Optional[Literal["en", "es"]] = None
+    language: Optional[Literal["en", "es", "hi"]] = None
     foods: Optional[List[str]] = Field(None, max_length=12)
     drinks: Optional[List[str]] = Field(None, max_length=6)
     songs: Optional[List[str]] = Field(None, max_length=6)
@@ -137,7 +137,7 @@ class OfrendaRecord(BaseModel):
     relationship: Optional[str] = Field(None, max_length=40)
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
-    language: Literal["en", "es"] = "es"
+    language: Literal["en", "es", "hi"] = "es"
     foods: List[str] = Field(default_factory=list, max_length=12)
     drinks: List[str] = Field(default_factory=list, max_length=6)
     songs: List[str] = Field(default_factory=list, max_length=6)
