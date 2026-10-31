@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
     OLLAMA_HOST=http://host.docker.internal:11434 \
-    WHISPER_MODEL=base
+    WHISPER_MODEL=base \
+    HF_HOME=/root/.cache/huggingface
 
 # Install system audio dependencies (ffmpeg for faster-whisper decoding)
 RUN apt-get update && apt-get install -y --no-install-recommends \
