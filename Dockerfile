@@ -34,6 +34,12 @@ RUN python3 -c "import torch, torchaudio, TTS; print(f'VERIFIED: Torch {torch.__
 # Pre-download and cache faster-whisper model so container starts fast
 RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
 
+# Pre-download and cache lightweight MMS-TTS models (Hindi, English, Spanish) for Render Free Tier (512MB RAM)
+RUN python3 -c "from transformers import VitsModel, AutoTokenizer; \
+    AutoTokenizer.from_pretrained('facebook/mms-tts-eng'); VitsModel.from_pretrained('facebook/mms-tts-eng'); \
+    AutoTokenizer.from_pretrained('facebook/mms-tts-hin'); VitsModel.from_pretrained('facebook/mms-tts-hin'); \
+    AutoTokenizer.from_pretrained('facebook/mms-tts-spa'); VitsModel.from_pretrained('facebook/mms-tts-spa')"
+
 # Copy application source code
 COPY app/ ./app/
 COPY scripts/ ./scripts/

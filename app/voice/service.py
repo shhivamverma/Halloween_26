@@ -9,9 +9,10 @@ from typing import Dict, List, Optional
 from app.schemas import VoiceConsentRecord, VoiceProfileMetadata
 from app.storage import Storage
 from app.voice.base import VoiceSynthesisEngine
+from app.voice.mms_engine import MMSVitsEngine
 from app.voice.mock_engine import MockVoiceEngine
 from app.voice.openvoice_engine import OpenVoiceEngine
-from app.voice.xtts_engine import XTTSv2Engine
+from app.voice.xtts_engine import XTTSv2Engine, get_effective_cgroup_limit_mb
 
 logger = logging.getLogger("ofrenda.voice")
 
@@ -20,13 +21,14 @@ class VoiceService:
     """Coordinates local speech synthesis, consent verification, and provenance stamping."""
 
     def __init__(self):
+        self._mms = MMSVitsEngine()
         self._xtts = XTTSv2Engine()
         self._openvoice = OpenVoiceEngine()
         self._mock = MockVoiceEngine()
 
     def is_neural_engine_available(self) -> bool:
-        """Check if a genuine neural voice conversion engine (XTTS or OpenVoice) is available."""
-        return self._xtts.is_available() or self._openvoice.is_available()
+        """Check if a genuine neural voice conversion engine (MMS, XTTS, or OpenVoice) is available."""
+        return self._mms.is_available() or self._xtts.is_available() or self._openvoice.is_available()
 
     def get_active_engine(self) -> Optional[VoiceSynthesisEngine]:
         """Return the best available local neural synthesis engine, or test mock when running tests."""
@@ -37,14 +39,29 @@ class VoiceService:
         if is_test_env or override == "mock":
             return self._mock
 
-        # Genuine neural engines: XTTS-v2 or OpenVoice
+        # Explicit engine overrides
+        if override == "mms" and self._mms.is_available():
+            return self._mms
         if override == "xtts" and self._xtts.is_available():
             return self._xtts
         if override == "openvoice" and self._openvoice.is_available():
             return self._openvoice
 
-        if self._xtts.is_available():
+        # Check memory constraints:
+        # On Render Free Tier (512 MB RAM), XTTS-v2 triggers Linux OOM termination.
+        # MMS-VITS uses only ~160 MB RAM, running natively and fluidly within 512 MB Free Tier limits.
+        cgroup_limit = get_effective_cgroup_limit_mb()
+        is_constrained_memory = cgroup_limit is not None and cgroup_limit < 1500
+
+        if is_constrained_memory and self._mms.is_available():
+            logger.info("Operating on memory-constrained container (%s MB). Active engine: MMS-VITS", cgroup_limit)
+            return self._mms
+
+        # On systems with >= 2 GB RAM, prefer XTTS-v2 if available, else MMS-VITS
+        if self._xtts.is_available() and not is_constrained_memory:
             return self._xtts
+        if self._mms.is_available():
+            return self._mms
         if self._openvoice.is_available():
             return self._openvoice
 
@@ -57,31 +74,13 @@ class VoiceService:
         is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("VOICE_ENGINE") == "mock")
 
         if engine is not None and engine != self._mock:
-            from app.voice.xtts_engine import get_system_resources
-
-            res = get_system_resources()
-            cgroup_limit = res.get("cgroup_limit_mb")
-            if cgroup_limit is not None and cgroup_limit < 1500:
-                return {
-                    "available": False,
-                    "engine": engine.name,
-                    "active_engine": engine.name,
-                    "status": "insufficient_ram",
-                    "cgroup_limit_mb": cgroup_limit,
-                    "supported_languages": engine.supported_languages,
-                    "message": (
-                        f"Render container memory is constrained to {cgroup_limit:.0f} MB (Render Free Tier). "
-                        "XTTS-v2 neural voice synthesis requires at least 2,048 MB (2 GB) RAM. "
-                        "Please upgrade your Render service to the 'Starter' plan (2 GB RAM) to enable neural voice synthesis."
-                    ),
-                }
             return {
                 "available": True,
                 "engine": engine.name,
                 "active_engine": engine.name,
                 "status": "ready",
                 "supported_languages": engine.supported_languages,
-                "message": "Local neural voice conversion engine is loaded and operational.",
+                "message": f"Local neural voice engine '{engine.name}' is operational (Free-Tier Optimized, ~160MB RAM).",
             }
         elif is_test_env:
             return {

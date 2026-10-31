@@ -235,3 +235,16 @@ def test_health_check_includes_voice_status(client):
     assert "voice" in data
     assert "available" in data["voice"]
     assert "active_engine" in data["voice"]
+
+
+def test_mms_engine_properties():
+    """Verify MMS-VITS lightweight engine metadata and language support."""
+    from app.voice.mms_engine import MMSVitsEngine
+
+    engine = MMSVitsEngine()
+    assert engine.name == "mms-vits"
+    assert "hi" in engine.supported_languages
+    assert "en" in engine.supported_languages
+    assert "es" in engine.supported_languages
+    assert engine.is_available() is True
+
