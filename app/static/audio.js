@@ -8,7 +8,7 @@
   "use strict";
 
   // Audio State & Preferences
-  const STORAGE_KEY = "ofrenda_sound_settings_v1";
+  const STORAGE_KEY = "ofrenda_sound_settings_v2";
   const state = {
     enabled: false,
     masterVolume: 0.75,
@@ -71,7 +71,7 @@
 
       // Master output
       masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(state.enabled ? state.masterVolume : 0, ctx.currentTime);
+      masterGain.gain.setValueAtTime(state.enabled ? state.masterVolume : 0.0001, ctx.currentTime);
       masterGain.connect(ctx.destination);
 
       // Sub-busses
@@ -166,7 +166,6 @@
 
     candleCrackleInterval = setInterval(() => {
       if (!state.enabled || !ctx || ctx.state !== "running") return;
-      // Random micro crackles
       if (Math.random() < 0.45) {
         triggerCrackleBurst();
       }
@@ -210,7 +209,6 @@
   }
 
   // 3. Meditative Memorial Music (Warm Pentatonic Drone Harmonics)
-  // Notes corresponding to D minor pentatonic: D3, F3, G3, A3, C4, D4
   const CHORD_PROGRESSIONS = [
     [146.83, 220.00, 261.63, 349.23], // Dm7 (D3, A3, C4, F4)
     [130.81, 196.00, 261.63, 329.63], // Cmaj (C3, G3, C4, E4)
@@ -222,7 +220,9 @@
   function startAmbientMusic() {
     if (activeDroneOscs.length > 0 || !ctx) return;
     playNextChord();
-    musicInterval = setInterval(playNextChord, 8000);
+    if (!musicInterval) {
+      musicInterval = setInterval(playNextChord, 8000);
+    }
   }
 
   function playNextChord() {
@@ -231,7 +231,6 @@
       const chord = CHORD_PROGRESSIONS[currentChordIndex];
       currentChordIndex = (currentChordIndex + 1) % CHORD_PROGRESSIONS.length;
 
-      // Create warm additive sine/triangle pads
       const fadeDuration = 7.5;
       const now = ctx.currentTime;
 
@@ -241,13 +240,11 @@
         const filter = ctx.createBiquadFilter();
 
         osc.type = idx % 2 === 0 ? "sine" : "triangle";
-        // Subtle detuning for warm acoustic richness
         osc.frequency.setValueAtTime(freq * (1 + (idx - 1.5) * 0.002), now);
 
         filter.type = "lowpass";
         filter.frequency.setValueAtTime(650 + idx * 120, now);
 
-        // Smooth swelling attack and decay
         oscGain.gain.setValueAtTime(0.0001, now);
         oscGain.gain.exponentialRampToValueAtTime(0.045 / chord.length, now + 3.0);
         oscGain.gain.exponentialRampToValueAtTime(0.0001, now + fadeDuration);
@@ -262,7 +259,6 @@
         activeDroneOscs.push(osc);
       });
 
-      // Periodic cleanup of stopped oscillators
       setTimeout(() => {
         activeDroneOscs = activeDroneOscs.filter((o) => {
           try {
@@ -306,7 +302,7 @@
       osc.frequency.setValueAtTime(freq, now);
 
       osc2.type = "sine";
-      osc2.frequency.setValueAtTime(freq * 2.76, now); // Metallic overtone
+      osc2.frequency.setValueAtTime(freq * 2.76, now);
 
       const filter = ctx.createBiquadFilter();
       filter.type = "bandpass";
@@ -334,7 +330,6 @@
     if (!state.enabled || !ensureContext()) return;
     try {
       const now = ctx.currentTime;
-      // Soft spark / whoosh
       const duration = 0.35;
       const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
       const data = buffer.getChannelData(0);
@@ -359,8 +354,6 @@
       gain.connect(sfxGain);
 
       noise.start(now);
-
-      // Harmonious warmth bell
       playChime(440, 1.8);
     } catch (e) {}
   }
@@ -420,10 +413,10 @@
     } catch (e) {}
   }
 
-  // Celestial Altar Reveal Fanfare (Warm Harp Arpeggio & Choir Swell)
+  // Celestial Altar Reveal Fanfare (Warm Harp Arpeggio)
   function playReveal() {
     if (!state.enabled || !ensureContext()) return;
-    const arpeggio = [293.66, 369.99, 440.00, 587.33, 739.99, 880.00]; // D, F#, A, D, F#, A
+    const arpeggio = [293.66, 369.99, 440.00, 587.33, 739.99, 880.00];
     arpeggio.forEach((f, idx) => {
       setTimeout(() => {
         playChime(f, 3.2);
@@ -436,7 +429,7 @@
   function playTypeSound() {
     if (!state.enabled || !ensureContext()) return;
     const now = Date.now();
-    if (now - lastTypingSoundTime < 180) return; // rate limit typing ticks
+    if (now - lastTypingSoundTime < 180) return;
     lastTypingSoundTime = now;
 
     try {
@@ -448,7 +441,7 @@
       const notes = [440, 493.88, 554.37, 659.25];
       const pitch = notes[Math.floor(Math.random() * notes.length)];
       osc.frequency.setValueAtTime(pitch, audioNow);
-      gain.gain.setValueAtTime(0.04, audioNow);
+      gain.gain.setValueAtTime(0.03, audioNow);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioNow + 0.12);
 
       osc.connect(gain);
@@ -524,39 +517,30 @@
     } catch (e) {}
   }
 
-      gain.gain.setValueAtTime(0.012, audioNow);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioNow + 0.15);
-
-      osc.connect(gain);
-      gain.connect(sfxGain);
-
-      osc.start(audioNow);
-      osc.stop(audioNow + 0.15);
-    } catch (e) {}
-  }
-
   // --- PUBLIC API & CONTROLS ---
 
   function toggleMasterAudio(forceState) {
-    ensureContext();
+    const audioContext = ensureContext();
     if (typeof forceState === "boolean") {
       state.enabled = forceState;
     } else {
       state.enabled = !state.enabled;
     }
 
-    if (masterGain && ctx) {
-      const now = ctx.currentTime;
+    if (masterGain && audioContext) {
+      const now = audioContext.currentTime;
       if (state.enabled) {
-        masterGain.gain.setValueAtTime(0.001, now);
-        masterGain.gain.linearRampToValueAtTime(state.masterVolume, now + 0.5);
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(0.0001, now);
+        masterGain.gain.linearRampToValueAtTime(state.masterVolume, now + 0.35);
         startWindAmbience();
         startCandleCrackle();
         startAmbientMusic();
         playChime(587.33, 1.8);
       } else {
+        masterGain.gain.cancelScheduledValues(now);
         masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-        masterGain.gain.linearRampToValueAtTime(0.0001, now + 0.3);
+        masterGain.gain.linearRampToValueAtTime(0.0001, now + 0.15);
         stopWindAmbience();
         stopCandleCrackle();
         stopAmbientMusic();
@@ -574,6 +558,7 @@
       masterGain.gain.setValueAtTime(state.masterVolume, ctx.currentTime);
     }
     savePreferences();
+    updateUI();
   }
 
   function setMusicVolume(vol) {
@@ -582,6 +567,7 @@
       musicGain.gain.setValueAtTime(state.musicVolume, ctx.currentTime);
     }
     savePreferences();
+    updateUI();
   }
 
   function setSfxVolume(vol) {
@@ -590,6 +576,7 @@
       sfxGain.gain.setValueAtTime(state.sfxVolume, ctx.currentTime);
     }
     savePreferences();
+    updateUI();
   }
 
   function setAmbientVolume(vol) {
@@ -598,9 +585,10 @@
       ambientGain.gain.setValueAtTime(state.ambientVolume, ctx.currentTime);
     }
     savePreferences();
+    updateUI();
   }
 
-  // Visibility Change Handling (Pause audio when tab is backgrounded)
+  // Document visibility handling (pause procedural audio when hidden)
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       if (ctx && ctx.state === "running") {
@@ -613,24 +601,60 @@
     }
   });
 
+  // Centralized UI Update Function (Synchronizes all UI instances)
   function updateUI() {
-    const btn = document.getElementById("btn-sound-toggle");
-    if (btn) {
-      btn.innerHTML = state.enabled
+    const isAct = Boolean(state.enabled);
+
+    // Update main header / FAB buttons
+    const btnSoundToggle = document.getElementById("btn-sound-toggle");
+    if (btnSoundToggle) {
+      btnSoundToggle.classList.toggle("sound-active", isAct);
+      btnSoundToggle.setAttribute("aria-pressed", isAct ? "true" : "false");
+      btnSoundToggle.innerHTML = isAct
         ? '<span class="sound-icon">🔊</span> <span class="sound-label">Sound: On</span>'
         : '<span class="sound-icon">🔇</span> <span class="sound-label">Sound: Off</span>';
-      btn.classList.toggle("sound-active", state.enabled);
-      btn.setAttribute("aria-pressed", state.enabled ? "true" : "false");
     }
 
-    const musicSlider = document.getElementById("slider-music-vol");
-    if (musicSlider) musicSlider.value = state.musicVolume * 100;
+    const soundFabIcon = document.getElementById("sound-fab-icon");
+    if (soundFabIcon) soundFabIcon.textContent = isAct ? "🔊" : "🔇";
 
-    const sfxSlider = document.getElementById("slider-sfx-vol");
-    if (sfxSlider) sfxSlider.value = state.sfxVolume * 100;
+    const soundFabLabel = document.getElementById("sound-fab-label");
+    if (soundFabLabel) soundFabLabel.textContent = isAct ? "Sound: On" : "Sound: Off";
 
-    const ambientSlider = document.getElementById("slider-ambient-vol");
-    if (ambientSlider) ambientSlider.value = state.ambientVolume * 100;
+    const btnSoundFab = document.getElementById("btn-sound-fab");
+    if (btnSoundFab) {
+      btnSoundFab.classList.toggle("sound-active", isAct);
+      btnSoundFab.setAttribute("aria-pressed", isAct ? "true" : "false");
+    }
+
+    // Modal master button & label
+    const btnSoundMasterToggle = document.getElementById("btn-sound-master-toggle");
+    if (btnSoundMasterToggle) {
+      btnSoundMasterToggle.textContent = isAct ? "Mute All" : "Turn On";
+      btnSoundMasterToggle.classList.toggle("btn-danger", isAct);
+      btnSoundMasterToggle.classList.toggle("btn-primary", !isAct);
+    }
+
+    const soundStatusLabel = document.getElementById("sound-status-label");
+    if (soundStatusLabel) {
+      soundStatusLabel.textContent = isAct ? "Procedural Audio: Active" : "Procedural Audio: Muted";
+      soundStatusLabel.style.color = isAct ? "var(--candle-gold)" : "var(--text-muted)";
+    }
+
+    // Sliders & Percentage Badges
+    const syncSlider = (id, lblId, val) => {
+      const input = document.getElementById(id);
+      if (input && document.activeElement !== input) {
+        input.value = val;
+      }
+      const lbl = document.getElementById(lblId);
+      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+    };
+
+    syncSlider("slider-vol-master", "lbl-vol-master", state.masterVolume);
+    syncSlider("slider-vol-music", "lbl-vol-music", state.musicVolume);
+    syncSlider("slider-vol-ambience", "lbl-vol-ambience", state.ambientVolume);
+    syncSlider("slider-vol-sfx", "lbl-vol-sfx", state.sfxVolume);
   }
 
   // Export to window
@@ -638,10 +662,13 @@
     state,
     toggleMasterAudio,
     toggle: toggleMasterAudio,
+    mute: () => toggleMasterAudio(false),
+    unmute: () => toggleMasterAudio(true),
     setMasterVolume,
     setMusicVolume,
     setSfxVolume,
     setAmbientVolume,
+    setAmbienceVolume: setAmbientVolume, // Alias for backward compatibility
     playChime,
     playCandleLight,
     playCandleExtinguish,
@@ -650,6 +677,7 @@
     playTypeSound,
     playIntroFanfare,
     playFlowerScatter,
+    ensureContext,
     updateUI,
   };
 
@@ -657,4 +685,3 @@
     updateUI();
   });
 })();
-

@@ -775,6 +775,49 @@
     });
   }
 
+  // Interactive Sacred Petal Shower API
+  window.offerSacredPetals = function (count = 24) {
+    if (window.OfrendaAudio) {
+      window.OfrendaAudio.playFlowerScatter();
+      window.OfrendaAudio.playChime(659.25, 2.2);
+    }
+    for (let i = 0; i < count; i++) {
+      const mat = petalMaterials[i % petalMaterials.length];
+      const p = new THREE.Mesh(petalGeo, mat);
+      p.scale.setScalar(0.7 + Math.random() * 0.5);
+      p.position.set(
+        (Math.random() - 0.5) * 3.4,
+        3.5 + Math.random() * 1.8,
+        (Math.random() - 0.5) * 2.2
+      );
+      p.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      p.userData = {
+        active: true,
+        vy: -0.012 - Math.random() * 0.014,
+        vx: (Math.random() - 0.5) * 0.014,
+        vz: (Math.random() - 0.5) * 0.012,
+        rotX: (Math.random() - 0.5) * 0.06,
+        rotY: (Math.random() - 0.5) * 0.06,
+        rotZ: (Math.random() - 0.5) * 0.06,
+        swayRate: 0.03 + Math.random() * 0.04,
+        swayAmp: 0.012 + Math.random() * 0.016,
+        phase: Math.random() * Math.PI * 2,
+        landed: false,
+        targetY: 0.2 + Math.random() * 0.9,
+      };
+      offeringPetalsGroup.add(p);
+      offeringPetals.push(p);
+    }
+
+    // Gentle altar illumination pulse on petal offering
+    if (altarBloomLight) {
+      altarBloomLight.intensity = 2.8;
+      setTimeout(() => {
+        altarBloomLight.intensity = 1.6;
+      }, 900);
+    }
+  };
+
   // --- VOLUMETRIC GOLDEN LIGHT RAYS & CENTER ALTAR BLOOM ---
   const altarBloomLight = new THREE.PointLight(PALETTE.antiqueGold, 0.0, 9.0, 1.8);
   altarBloomLight.position.set(0, 1.35, 0.2);
@@ -853,6 +896,14 @@
 
     mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    // Hover cursor feedback over interactive candles
+    const targetTag = e.target.tagName.toLowerCase();
+    if (targetTag === "canvas") {
+      raycaster.setFromCamera(mouseVec, camera);
+      const intersects = raycaster.intersectObjects(candleObjects, true);
+      canvas.style.cursor = intersects.length > 0 ? "pointer" : "default";
+    }
   }
   window.addEventListener("mousemove", onMouseMove, { passive: true });
 

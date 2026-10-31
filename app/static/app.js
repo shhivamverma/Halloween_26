@@ -1350,10 +1350,12 @@ function initEventListeners() {
           }
           const hero = document.getElementById("section-hero");
           if (hero) hero.classList.remove("hidden");
-          goToStep(1);
+          if (window.setWorld3DStep) window.setWorld3DStep("hero");
         });
       } else {
-        goToStep(1);
+        const hero = document.getElementById("section-hero");
+        if (hero) hero.classList.remove("hidden");
+        if (window.setWorld3DStep) window.setWorld3DStep("hero");
       }
     });
   }
@@ -1380,6 +1382,15 @@ function initEventListeners() {
     });
   }
 
+  const btnHeroPetals = document.getElementById("btn-hero-petals");
+  if (btnHeroPetals) {
+    btnHeroPetals.addEventListener("click", () => {
+      if (window.offerSacredPetals) {
+        window.offerSacredPetals(24);
+      }
+    });
+  }
+
   const btnHeroDemo = document.getElementById("btn-hero-demo");
   if (btnHeroDemo) {
     btnHeroDemo.addEventListener("click", () => {
@@ -1402,36 +1413,28 @@ function initEventListeners() {
     });
   }
 
-  // --- FLOATING MEMORIAL SOUNDSCAPE CONTROLS (FAB & MODAL) ---
-  const btnSoundFab = document.getElementById("btn-sound-fab");
-  const soundFabIcon = document.getElementById("sound-fab-icon");
-  const soundFabLabel = document.getElementById("sound-fab-label");
+  // --- INTEGRATED HEADER SOUNDSCAPE CONTROLS & MIXER PANEL ---
+  const btnSoundToggle = document.getElementById("btn-sound-toggle");
+  const btnSoundMixerOpen = document.getElementById("btn-sound-mixer-open");
   const soundModal = document.getElementById("sound-modal");
   const btnSoundModalClose = document.getElementById("btn-sound-modal-close");
   const btnSoundMasterToggle = document.getElementById("btn-sound-master-toggle");
-  const soundStatusLabel = document.getElementById("sound-status-label");
 
-  function updateFloatingSoundUI() {
-    if (!window.OfrendaAudio) return;
-    const active = window.OfrendaAudio.state.enabled;
-    if (btnSoundFab) {
-      btnSoundFab.classList.toggle("sound-active", active);
-      if (soundFabIcon) soundFabIcon.textContent = active ? "🔊" : "🔇";
-      if (soundFabLabel) soundFabLabel.textContent = active ? "Sound: On" : "Sound: Off";
-    }
-    if (soundStatusLabel) {
-      soundStatusLabel.textContent = active ? "Procedural Audio: Active" : "Procedural Audio: Muted";
-    }
-    if (btnSoundMasterToggle) {
-      btnSoundMasterToggle.textContent = active ? "Mute" : "Turn On";
-    }
+  if (btnSoundToggle) {
+    btnSoundToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (window.OfrendaAudio) {
+        window.OfrendaAudio.toggle();
+      }
+    });
   }
 
-  if (btnSoundFab) {
-    btnSoundFab.addEventListener("click", (e) => {
+  if (btnSoundMixerOpen) {
+    btnSoundMixerOpen.addEventListener("click", (e) => {
       e.stopPropagation();
       if (soundModal) {
-        soundModal.classList.toggle("open");
+        const isOpen = soundModal.classList.toggle("open");
+        btnSoundMixerOpen.setAttribute("aria-expanded", isOpen ? "true" : "false");
       }
     });
   }
@@ -1439,13 +1442,15 @@ function initEventListeners() {
   if (btnSoundModalClose && soundModal) {
     btnSoundModalClose.addEventListener("click", () => {
       soundModal.classList.remove("open");
+      if (btnSoundMixerOpen) btnSoundMixerOpen.setAttribute("aria-expanded", "false");
     });
   }
 
   document.addEventListener("click", (e) => {
     if (soundModal && soundModal.classList.contains("open")) {
-      if (!soundModal.contains(e.target) && !e.target.closest("#btn-sound-fab")) {
+      if (!soundModal.contains(e.target) && !e.target.closest("#btn-sound-mixer-open")) {
         soundModal.classList.remove("open");
+        if (btnSoundMixerOpen) btnSoundMixerOpen.setAttribute("aria-expanded", "false");
       }
     }
   });
@@ -1454,7 +1459,6 @@ function initEventListeners() {
     btnSoundMasterToggle.addEventListener("click", () => {
       if (window.OfrendaAudio) {
         window.OfrendaAudio.toggle();
-        updateFloatingSoundUI();
       }
     });
   }
@@ -1468,32 +1472,24 @@ function initEventListeners() {
     sliderMaster.addEventListener("input", (e) => {
       const val = parseFloat(e.target.value);
       if (window.OfrendaAudio) window.OfrendaAudio.setMasterVolume(val);
-      const lbl = document.getElementById("lbl-vol-master");
-      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
     });
   }
   if (sliderMusic) {
     sliderMusic.addEventListener("input", (e) => {
       const val = parseFloat(e.target.value);
       if (window.OfrendaAudio) window.OfrendaAudio.setMusicVolume(val);
-      const lbl = document.getElementById("lbl-vol-music");
-      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
     });
   }
   if (sliderAmbience) {
     sliderAmbience.addEventListener("input", (e) => {
       const val = parseFloat(e.target.value);
-      if (window.OfrendaAudio) window.OfrendaAudio.setAmbienceVolume(val);
-      const lbl = document.getElementById("lbl-vol-ambience");
-      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
+      if (window.OfrendaAudio) window.OfrendaAudio.setAmbientVolume(val);
     });
   }
   if (sliderSfx) {
     sliderSfx.addEventListener("input", (e) => {
       const val = parseFloat(e.target.value);
       if (window.OfrendaAudio) window.OfrendaAudio.setSfxVolume(val);
-      const lbl = document.getElementById("lbl-vol-sfx");
-      if (lbl) lbl.textContent = Math.round(val * 100) + "%";
     });
   }
 

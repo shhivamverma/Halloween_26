@@ -35,44 +35,6 @@
     </div>
   </div>
 
-  <!-- Floating Memorial Soundscape Controls (Collapsed by default, never overlaps content) -->
-  <div class="sound-fab-wrapper">
-    <button type="button" id="btn-sound-fab" class="sound-fab-btn" title="Memorial Soundscape Controls" aria-expanded="false">
-      <span id="sound-fab-icon">🔇</span>
-      <span id="sound-fab-label" class="sound-fab-label">Sound: Off</span>
-    </button>
-    <div id="sound-modal" class="sound-modal" role="dialog" aria-modal="true" aria-label="Audio Mixer Settings">
-      <div class="sound-modal-header">
-        <div class="sound-modal-title">
-          <span>🕯️</span> <span>Memorial Soundscape</span>
-        </div>
-        <button type="button" id="btn-sound-modal-close" class="sound-modal-close" title="Close Settings">&times;</button>
-      </div>
-      <div class="sound-modal-body">
-        <div class="sound-master-toggle-row">
-          <span class="sound-status-label" id="sound-status-label">Procedural Audio: Muted</span>
-          <button type="button" id="btn-sound-master-toggle" class="btn btn-secondary btn-sm">Turn On</button>
-        </div>
-        <div class="sound-slider-item">
-          <div class="sound-slider-meta"><span>Master Volume</span><span id="lbl-vol-master">70%</span></div>
-          <input type="range" class="sound-range-input" id="slider-vol-master" min="0" max="1" step="0.05" value="0.7">
-        </div>
-        <div class="sound-slider-item">
-          <div class="sound-slider-meta"><span>Melody & Chords</span><span id="lbl-vol-music">50%</span></div>
-          <input type="range" class="sound-range-input" id="slider-vol-music" min="0" max="1" step="0.05" value="0.5">
-        </div>
-        <div class="sound-slider-item">
-          <div class="sound-slider-meta"><span>Wind & Candles</span><span id="lbl-vol-ambience">60%</span></div>
-          <input type="range" class="sound-range-input" id="slider-vol-ambience" min="0" max="1" step="0.05" value="0.6">
-        </div>
-        <div class="sound-slider-item">
-          <div class="sound-slider-meta"><span>Bells & Interactions</span><span id="lbl-vol-sfx">70%</span></div>
-          <input type="range" class="sound-range-input" id="slider-vol-sfx" min="0" max="1" step="0.05" value="0.7">
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Header (Clean, responsive, non-overlapping) -->
   <header class="app-header" id="app-header">
     <div class="header-inner">
@@ -81,6 +43,48 @@
         <div class="brand-title" id="lbl-brand-title">Offline Ofrenda Keeper</div>
       </div>
       <div class="header-controls">
+        <!-- Compact Integrated Soundscape Controls -->
+        <div class="sound-control-group">
+          <button type="button" id="btn-sound-toggle" class="btn btn-sound-pill" title="Toggle Soundscape Audio (Web Audio API)" aria-pressed="false">
+            <span class="sound-icon">🔇</span>
+            <span class="sound-label">Sound: Off</span>
+          </button>
+          <button type="button" id="btn-sound-mixer-open" class="btn btn-sound-gear" title="Open Audio Mixer Settings" aria-expanded="false" aria-label="Audio Mixer Settings">
+            🎛️
+          </button>
+          <!-- Collapsible Sound Mixer Dropdown Panel -->
+          <div id="sound-modal" class="sound-modal" role="dialog" aria-modal="true" aria-label="Audio Mixer Settings">
+            <div class="sound-modal-header">
+              <div class="sound-modal-title">
+                <span>🕯️</span> <span>Memorial Soundscape</span>
+              </div>
+              <button type="button" id="btn-sound-modal-close" class="sound-modal-close" title="Close Settings">&times;</button>
+            </div>
+            <div class="sound-modal-body">
+              <div class="sound-master-toggle-row">
+                <span class="sound-status-label" id="sound-status-label">Procedural Audio: Muted</span>
+                <button type="button" id="btn-sound-master-toggle" class="btn btn-primary btn-sm">Turn On</button>
+              </div>
+              <div class="sound-slider-item">
+                <div class="sound-slider-meta"><span>Master Volume</span><span id="lbl-vol-master">75%</span></div>
+                <input type="range" class="sound-range-input" id="slider-vol-master" min="0" max="1" step="0.05" value="0.75">
+              </div>
+              <div class="sound-slider-item">
+                <div class="sound-slider-meta"><span>Melody & Chords</span><span id="lbl-vol-music">60%</span></div>
+                <input type="range" class="sound-range-input" id="slider-vol-music" min="0" max="1" step="0.05" value="0.6">
+              </div>
+              <div class="sound-slider-item">
+                <div class="sound-slider-meta"><span>Wind & Candles</span><span id="lbl-vol-ambience">50%</span></div>
+                <input type="range" class="sound-range-input" id="slider-vol-ambience" min="0" max="1" step="0.05" value="0.5">
+              </div>
+              <div class="sound-slider-item">
+                <div class="sound-slider-meta"><span>Bells & Interactions</span><span id="lbl-vol-sfx">70%</span></div>
+                <input type="range" class="sound-range-input" id="slider-vol-sfx" min="0" max="1" step="0.05" value="0.7">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button type="button" id="btn-demo-quick" class="btn btn-demo-glow" title="Instant demonstration with fictional Abuela Rosa">✨ Demo (Abuela Rosa)</button>
         <button type="button" id="btn-replay-intro" class="btn btn-secondary" title="Replay 3D Cinematic Entrance">🌸 Replay Intro</button>
         <button type="button" id="btn-open-drawer" class="btn btn-secondary" aria-label="My saved ofrendas">My Ofrendas</button>
@@ -105,15 +109,19 @@
           <span>🕯️</span>
           <span>Create Your Ofrenda</span>
         </button>
+        <button type="button" id="btn-hero-petals" class="btn btn-hero-petals" title="Scatter sacred cempasúchil petals onto the 3D altar">
+          <span>🌸</span>
+          <span>Offer Marigold Petals</span>
+        </button>
         <button type="button" id="btn-hero-demo" class="btn btn-hero-secondary">
           <span>✨</span>
-          <span>Experience Demo (Abuela Rosa)</span>
+          <span>Experience Demo</span>
         </button>
       </div>
       <div class="hero-hints">
         <span class="hint-item">✨ Click any 3D candle to light or extinguish</span>
         <span class="hint-dot">&bull;</span>
-        <span class="hint-item">🌸 Pure WebGL & procedural audio</span>
+        <span class="hint-item">🌸 Interactive marigold petals & physics</span>
         <span class="hint-dot">&bull;</span>
         <span class="hint-item">🔒 Completely private & local</span>
       </div>

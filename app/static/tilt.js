@@ -21,6 +21,7 @@
       }
 
       el.addEventListener("mousemove", (e) => {
+        if (window.innerWidth <= 768) return;
         const rect = el.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
