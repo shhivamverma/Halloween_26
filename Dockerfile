@@ -20,10 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install Python dependencies: explicit CPU PyTorch first to prevent CUDA packages, then full requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt
+
+# Verify that torch, torchaudio, and TTS import cleanly in the container build environment
+RUN python3 -c "import torch, torchaudio, TTS; print(f'VERIFIED: Torch {torch.__version__}, Torchaudio {torchaudio.__version__}, TTS {TTS.__version__}')"
 
 # Pre-download and cache faster-whisper model so container can run 100% offline
 RUN HF_HUB_OFFLINE=0 python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"

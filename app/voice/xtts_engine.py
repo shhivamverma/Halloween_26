@@ -55,7 +55,9 @@ class XTTSv2Engine(VoiceSynthesisEngine):
             import TTS  # noqa: F401
 
             return True
-        except Exception:
+        except Exception as exc:
+            self._import_error = str(exc)
+            logger.warning("XTTS-v2 dependency import check failed: %s", exc)
             return False
 
     def _get_model(self):
@@ -79,7 +81,14 @@ class XTTSv2Engine(VoiceSynthesisEngine):
                 tts_cache_dir.mkdir(parents=True, exist_ok=True)
                 os.environ.setdefault("TTS_HOME", str(tts_cache_dir))
 
-            _xtts_instance = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=use_gpu)
+            try:
+                _xtts_instance = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=use_gpu)
+            except Exception as exc:
+                logger.error("Failed to initialize XTTS-v2 model: %s", exc, exc_info=True)
+                raise RuntimeError(
+                    f"XTTS-v2 model initialization failed: {exc}. "
+                    "Ensure adequate persistent disk storage and memory are available."
+                ) from exc
         return _xtts_instance
 
     def synthesize(
@@ -92,7 +101,8 @@ class XTTSv2Engine(VoiceSynthesisEngine):
     ) -> float:
         """Synthesize text using reference speaker audio via XTTS-v2."""
         if not self.is_available():
-            raise RuntimeError("XTTS-v2 dependencies (torch, coqui-tts) are not installed.")
+            err_msg = getattr(self, "_import_error", "torch, torchaudio, or coqui-tts packages could not be imported")
+            raise RuntimeError(f"XTTS-v2 dependencies (torch, coqui-tts) are not installed or failed to import: {err_msg}")
 
         # Map language codes
         lang_code = language.lower()
