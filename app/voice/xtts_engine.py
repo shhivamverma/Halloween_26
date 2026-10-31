@@ -4,6 +4,8 @@ import gc
 import logging
 import os
 from pathlib import Path
+import threading
+import time
 from typing import List, Optional
 
 from app.voice.base import VoiceSynthesisEngine
@@ -14,7 +16,57 @@ logger = logging.getLogger("ofrenda.voice.xtts")
 # Automatically acknowledge Coqui Non-Commercial Research License terms
 os.environ["COQUI_TOS_AGREED"] = "1"
 
+_init_lock = threading.Lock()
 _xtts_instance = None
+_audio_loader_patched = False
+
+
+def _patch_torchaudio_loader_if_needed():
+    """Ensure torchaudio can safely load audio files even if torchcodec dynamic libraries are missing."""
+    global _audio_loader_patched
+    if _audio_loader_patched:
+        return
+    try:
+        import soundfile as sf
+        import torch
+        import torchaudio
+
+        orig_load = torchaudio.load
+
+        def safe_load(filepath, *args, **kwargs):
+            try:
+                return orig_load(filepath, *args, **kwargs)
+            except Exception:
+                data, sr = sf.read(str(filepath), dtype="float32")
+                tensor = torch.from_numpy(data)
+                if tensor.ndim == 1:
+                    tensor = tensor.unsqueeze(0)
+                elif tensor.ndim == 2:
+                    tensor = tensor.t()
+                return tensor, sr
+
+        torchaudio.load = safe_load
+        _audio_loader_patched = True
+        logger.debug("Configured safe audio loader fallback using soundfile.")
+    except Exception as exc:
+        logger.debug("Audio loader patch skipped: %s", exc)
+
+
+def get_system_resources() -> dict:
+    """Inspect system RAM and disk availability for model inference."""
+    try:
+        import psutil
+
+        vm = psutil.virtual_memory()
+        data_dir = os.environ.get("DATA_DIR", ".")
+        disk = psutil.disk_usage(data_dir if Path(data_dir).exists() else ".")
+        return {
+            "ram_total_mb": round(vm.total / (1024 * 1024), 1),
+            "ram_available_mb": round(vm.available / (1024 * 1024), 1),
+            "disk_free_mb": round(disk.free / (1024 * 1024), 1),
+        }
+    except Exception:
+        return {"ram_total_mb": 0.0, "ram_available_mb": 0.0, "disk_free_mb": 0.0}
 
 
 class XTTSv2Engine(VoiceSynthesisEngine):
@@ -40,6 +92,8 @@ class XTTSv2Engine(VoiceSynthesisEngine):
         "ko",  # Korean
     ]
 
+    REQUIRED_MODEL_FILES = ["model.pth", "config.json", "vocab.json", "speakers_xtts.pth"]
+
     @property
     def name(self) -> str:
         return "xtts-v2"
@@ -60,36 +114,80 @@ class XTTSv2Engine(VoiceSynthesisEngine):
             logger.warning("XTTS-v2 dependency import check failed: %s", exc)
             return False
 
+    def _configure_cache_paths(self):
+        """Configure persistent model caching directories."""
+        data_dir = os.environ.get("DATA_DIR")
+        if not data_dir:
+            data_dir = str(Path("data").resolve())
+        tts_home = os.environ.get("TTS_HOME") or str(Path(data_dir) / "tts_cache")
+        hf_home = os.environ.get("HF_HOME") or str(Path(data_dir) / "hf_home")
+        hf_hub_cache = os.environ.get("HF_HUB_CACHE") or str(Path(hf_home) / "hub")
+
+        os.environ["TTS_HOME"] = tts_home
+        os.environ["HF_HOME"] = hf_home
+        os.environ["HF_HUB_CACHE"] = hf_hub_cache
+
+        Path(tts_home).mkdir(parents=True, exist_ok=True)
+        Path(hf_home).mkdir(parents=True, exist_ok=True)
+        Path(hf_hub_cache).mkdir(parents=True, exist_ok=True)
+
     def _get_model(self):
-        """Lazy load XTTS model instance on local CPU or GPU with persistent model caching."""
+        """Thread-safe singleton loading of XTTS-v2 model instance with persistent model caching."""
         global _xtts_instance
-        if _xtts_instance is None:
+        if _xtts_instance is not None:
+            return _xtts_instance
+
+        with _init_lock:
+            if _xtts_instance is not None:
+                return _xtts_instance
+
+            _patch_torchaudio_loader_if_needed()
+            self._configure_cache_paths()
+
+            res = get_system_resources()
+            logger.info(
+                "XTTS-v2 initialization starting (RAM available: %.0fMB / %.0fMB, Disk free: %.0fMB)...",
+                res["ram_available_mb"],
+                res["ram_total_mb"],
+                res["disk_free_mb"],
+            )
+
+            # Ensure online lookups are enabled during model download and verification
+            os.environ["HF_HUB_OFFLINE"] = "0"
+
             import torch
             from TTS.api import TTS
 
             # Limit thread usage on CPU to avoid overloading Render container
-            if not torch.cuda.is_available():
+            use_gpu = torch.cuda.is_available()
+            if not use_gpu:
                 torch.set_num_threads(2)
 
-            use_gpu = torch.cuda.is_available()
-            logger.info("Initializing XTTS-v2 model (GPU acceleration: %s)...", use_gpu)
-
-            # Ensure model cache path is persistent if DATA_DIR is set
-            data_dir = os.environ.get("DATA_DIR", "")
-            if data_dir:
-                tts_cache_dir = Path(data_dir) / "tts_cache"
-                tts_cache_dir.mkdir(parents=True, exist_ok=True)
-                os.environ.setdefault("TTS_HOME", str(tts_cache_dir))
-
+            start_t = time.perf_counter()
             try:
+                logger.info("Initializing XTTS-v2 model (model_name='tts_models/multilingual/multi-dataset/xtts_v2', gpu=%s)...", use_gpu)
                 _xtts_instance = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=use_gpu)
+                elapsed = time.perf_counter() - start_t
+                logger.info("XTTS-v2 model successfully initialized and cached in %.2fs.", elapsed)
+
+                # Once verified and downloaded, enable offline mode to prevent unexpected network calls
+                os.environ["HF_HUB_OFFLINE"] = "1"
+            except MemoryError as mem_err:
+                logger.error("Out of memory while loading XTTS-v2 model: %s", mem_err)
+                raise RuntimeError(
+                    f"XTTS-v2 model initialization failed due to memory constraints (Available RAM: {res['ram_available_mb']:.0f}MB). "
+                    "Loading the 1.8GB neural weights requires at least 2GB of RAM. "
+                    "Render Free Tier instances provide 512MB RAM; please upgrade to a Starter (2GB) or Standard plan."
+                ) from mem_err
             except Exception as exc:
                 logger.error("Failed to initialize XTTS-v2 model: %s", exc, exc_info=True)
                 raise RuntimeError(
                     f"XTTS-v2 model initialization failed: {exc}. "
-                    "Ensure adequate persistent disk storage and memory are available."
+                    f"System state: {res['ram_available_mb']:.0f}MB RAM available, {res['disk_free_mb']:.0f}MB disk free. "
+                    "Ensure adequate persistent storage and network access for initial model download."
                 ) from exc
-        return _xtts_instance
+
+            return _xtts_instance
 
     def synthesize(
         self,

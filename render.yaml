@@ -10,10 +10,14 @@ services:
       - key: WHISPER_MODEL
         value: base
       - key: HF_HUB_OFFLINE
-        value: "1"
+        value: "0"
       - key: COQUI_TOS_AGREED
         value: "1"
       - key: TTS_HOME
         value: /app/data/tts_cache
+      - key: HF_HOME
+        value: /app/data/hf_home
+      - key: HF_HUB_CACHE
+        value: /app/data/hf_home/hub
       - key: PORT
         value: 10000

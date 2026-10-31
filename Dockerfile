@@ -6,9 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DATA_DIR=/app/data \
     OLLAMA_HOST=http://host.docker.internal:11434 \
     WHISPER_MODEL=base \
-    HF_HOME=/root/.cache/huggingface \
+    HF_HOME=/app/data/hf_home \
+    HF_HUB_CACHE=/app/data/hf_home/hub \
     TTS_HOME=/app/data/tts_cache \
-    COQUI_TOS_AGREED=1
+    COQUI_TOS_AGREED=1 \
+    HF_HUB_OFFLINE=0
 
 # Install system audio dependencies (ffmpeg for whisper, libsndfile1 for torchaudio/soundfile)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,18 +31,15 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Verify that torch, torchaudio, and TTS import cleanly in the container build environment
 RUN python3 -c "import torch, torchaudio, TTS; print(f'VERIFIED: Torch {torch.__version__}, Torchaudio {torchaudio.__version__}, TTS {TTS.__version__}')"
 
-# Pre-download and cache faster-whisper model so container can run 100% offline
-RUN HF_HUB_OFFLINE=0 python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
-
-# Enforce strictly offline Hugging Face Hub mode for runtime container
-ENV HF_HUB_OFFLINE=1
+# Pre-download and cache faster-whisper model so container starts fast
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
 
 # Copy application source code
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 
-# Create persistent data volume directory
-RUN mkdir -p /app/data /app/data/tts_cache
+# Create persistent data volume directories
+RUN mkdir -p /app/data /app/data/tts_cache /app/data/hf_home /app/data/hf_home/hub
 
 EXPOSE 8000
 
