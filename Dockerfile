@@ -5,7 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
     OLLAMA_HOST=http://host.docker.internal:11434 \
-    WHISPER_MODEL=base \
+    WHISPER_MODEL=tiny \
     HF_HOME=/app/data/hf_home \
     HF_HUB_CACHE=/app/data/hf_home/hub \
     TTS_HOME=/app/data/tts_cache \
@@ -31,8 +31,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Verify that torch, torchaudio, and TTS import cleanly in the container build environment
 RUN python3 -c "import torch, torchaudio, TTS; print(f'VERIFIED: Torch {torch.__version__}, Torchaudio {torchaudio.__version__}, TTS {TTS.__version__}')"
 
-# Pre-download and cache faster-whisper model so container starts fast
-RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
+# Pre-download and cache faster-whisper model (tiny: 39 MB RAM) so container starts fast
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('tiny', device='cpu', compute_type='int8')"
 
 # Pre-download and cache lightweight MMS-TTS models (Hindi, English, Spanish) for Render Free Tier (512MB RAM)
 RUN python3 -c "from transformers import VitsModel, AutoTokenizer; \

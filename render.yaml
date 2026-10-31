@@ -8,7 +8,7 @@ services:
       - key: DATA_DIR
         value: /app/data
       - key: WHISPER_MODEL
-        value: base
+        value: tiny
       - key: HF_HUB_OFFLINE
         value: "0"
       - key: COQUI_TOS_AGREED

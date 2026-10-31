@@ -246,3 +246,4 @@ class MMSVitsEngine(VoiceSynthesisEngine):
         )
 
         return round(duration_s, 2)
+

@@ -31,7 +31,14 @@ class VoiceService:
         return self._mms.is_available() or self._xtts.is_available() or self._openvoice.is_available()
 
     def get_active_engine(self) -> Optional[VoiceSynthesisEngine]:
-        """Return the best available local neural synthesis engine, or test mock when running tests."""
+        """Return the best available local neural synthesis engine, or test mock when running tests.
+
+        MMS-VITS is our primary default engine:
+        - Memory footprint: ~160 MB RAM (runs fluidly on Render Free Tier 512 MB limit)
+        - Native high-fidelity speech for Hindi (hi), English (en), and Spanish (es)
+        - Reference voice pitch ($F_0$) and cadence conditioning
+        - Zero extra cost, $0/month forever.
+        """
         override = os.environ.get("VOICE_ENGINE", "").lower()
         is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or override == "mock")
 
@@ -39,29 +46,19 @@ class VoiceService:
         if is_test_env or override == "mock":
             return self._mock
 
-        # Explicit engine overrides
-        if override == "mms" and self._mms.is_available():
-            return self._mms
+        # If user explicitly requests XTTS (e.g. on a dedicated high-RAM GPU instance)
         if override == "xtts" and self._xtts.is_available():
             return self._xtts
         if override == "openvoice" and self._openvoice.is_available():
             return self._openvoice
 
-        # Check memory constraints:
-        # On Render Free Tier (512 MB RAM), XTTS-v2 triggers Linux OOM termination.
-        # MMS-VITS uses only ~160 MB RAM, running natively and fluidly within 512 MB Free Tier limits.
-        cgroup_limit = get_effective_cgroup_limit_mb()
-        is_constrained_memory = cgroup_limit is not None and cgroup_limit < 1500
-
-        if is_constrained_memory and self._mms.is_available():
-            logger.info("Operating on memory-constrained container (%s MB). Active engine: MMS-VITS", cgroup_limit)
-            return self._mms
-
-        # On systems with >= 2 GB RAM, prefer XTTS-v2 if available, else MMS-VITS
-        if self._xtts.is_available() and not is_constrained_memory:
-            return self._xtts
+        # Primary engine: MMS-VITS (Free-Tier Optimized, ~160MB RAM)
         if self._mms.is_available():
             return self._mms
+
+        # Fallback to XTTS or OpenVoice if MMS is unavailable
+        if self._xtts.is_available():
+            return self._xtts
         if self._openvoice.is_available():
             return self._openvoice
 
@@ -234,7 +231,9 @@ class VoiceService:
         user_input_path.write_bytes(user_audio_bytes)
 
         # 1. Transcribe user microphone audio locally with faster-whisper
+        import gc
         import app.transcribe as transcribe_mod
+
         hint_lang = (target_language or record.language or "es").lower()
         try:
             tx_result = transcribe_mod.transcribe(user_input_path, language_hint=hint_lang)
@@ -244,6 +243,8 @@ class VoiceService:
             logger.warning("Whisper transcription of microphone speech failed: %s", ex)
             transcribed_text = ""
             detected_lang = hint_lang
+        finally:
+            gc.collect()
 
         engine = self.get_active_engine()
         if engine is None:

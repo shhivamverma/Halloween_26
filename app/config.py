@@ -20,8 +20,8 @@ def get_ollama_model() -> str:
 
 
 def get_whisper_model() -> str:
-    """Return configured WHISPER_MODEL."""
-    return os.environ.get("WHISPER_MODEL", "base")
+    """Return configured WHISPER_MODEL (tiny: 39 MB RAM for Render Free Tier, or base)."""
+    return os.environ.get("WHISPER_MODEL", "tiny")
 
 
 def get_max_audio_mb() -> int:

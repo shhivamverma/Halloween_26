@@ -343,8 +343,7 @@ async function parseJsonResponse(res, defaultError = "Operation failed") {
         const clean = responseText.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 240);
         if (res.status === 502 || res.status === 503 || res.status === 504) {
           throw new Error(
-            `Server error (HTTP ${res.status}): The backend process terminated or timed out. ` +
-            `If running on Render Free Tier (512 MB RAM), neural models exceed available memory. Upgrade to Starter (2 GB) plan in the Render dashboard.`
+            `Server is warming up or processing audio (HTTP ${res.status}). Please wait a few seconds and try again.`
           );
         }
         throw new Error(`${defaultError} (HTTP ${res.status}): ${clean || res.statusText}`);
@@ -356,8 +355,7 @@ async function parseJsonResponse(res, defaultError = "Operation failed") {
     if (!data) {
       if (res.status === 502 || res.status === 503 || res.status === 504) {
         throw new Error(
-          `Server error (HTTP ${res.status}): The backend process terminated or timed out. ` +
-          `If running on Render Free Tier (512 MB RAM), neural models exceed available memory. Upgrade to Starter (2 GB) plan in the Render dashboard.`
+          `Server is warming up or processing audio (HTTP ${res.status}). Please wait a few seconds and try again.`
         );
       }
       throw new Error(`${defaultError} (HTTP ${res.status}: ${res.statusText || "Empty response from server"})`);
