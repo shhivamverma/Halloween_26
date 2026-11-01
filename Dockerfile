@@ -52,7 +52,7 @@ COPY scripts/ ./scripts/
 # Create persistent data volume directories
 RUN mkdir -p /app/data /app/data/tts_cache /app/data/hf_home /app/data/hf_home/hub
 
-EXPOSE 8000
+EXPOSE 7860 8000 10000
 
-# Launch server dynamically binding to Render's assigned $PORT (defaults to 8000)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+# Launch server dynamically binding to Render / HF Space assigned $PORT (defaults to 7860)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860} --workers 1"]

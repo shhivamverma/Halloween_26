@@ -238,7 +238,13 @@ class MMSVitsEngine(VoiceSynthesisEngine):
             if semitone_shift != 0:
                 try:
                     logger.info("Applying reference voice pitch conditioning: %d semitones", semitone_shift)
-                    waveform = F.pitch_shift(waveform, sample_rate, semitone_shift)
+                    import scipy.signal
+
+                    ratio = 2.0 ** (semitone_shift / 12.0)
+                    raw_audio = waveform.squeeze(0).numpy()
+                    new_len = int(len(raw_audio) / ratio)
+                    resampled_pitch = scipy.signal.resample(raw_audio, new_len)
+                    waveform = torch.from_numpy(resampled_pitch).unsqueeze(0)
                 except Exception as pitch_err:
                     logger.warning("Pitch conditioning skipped: %s", pitch_err)
 

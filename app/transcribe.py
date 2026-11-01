@@ -40,7 +40,7 @@ def transcribe(path: str | Path, language_hint: Optional[str] = None) -> Dict[st
     model = get_whisper_model_instance()
     lang = language_hint if language_hint in ("en", "es", "hi") else None
 
-    segments, info = model.transcribe(str(path), language=lang, beam_size=5)
+    segments, info = model.transcribe(str(path), language=lang, beam_size=1)
 
     collected_segments = [s.text.strip() for s in segments]
     full_text = " ".join([seg for seg in collected_segments if seg]).strip()

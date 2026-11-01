@@ -1,3 +1,13 @@
+---
+title: Offline Ofrenda Keeper
+emoji: 🕯️
+colorFrom: yellow
+colorTo: red
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🕯️ Offline Ofrenda Keeper
 
 > **A fully local app that turns a family's memories of someone they love (typed stories, a recorded voice note, favorite foods and songs, a photo) into a beautiful digital ofrenda page and a written remembrance.**
