@@ -265,3 +265,52 @@ def test_seed_vc_engine_properties():
     assert "hi" in mock_vc.supported_languages
     assert mock_vc.is_available() is True
 
+
+def test_seed_vc_load_checkpoint_and_conversion(tmp_path):
+    """Test Seed-VC checkpoint loading and conversion execution."""
+    import torch
+    import soundfile as sf
+    import numpy as np
+    from app.voice.seed_vc_engine import SeedVCEngine
+
+    dummy_ckpt = tmp_path / "dummy_seed_vc.pth"
+    torch.save(
+        {
+            "net": {
+                "cfm": {"layer.weight": torch.zeros(2, 2)},
+                "style_encoder": {"enc.weight": torch.zeros(2, 2)},
+                "vq": {"vq.weight": torch.zeros(2, 2)},
+                "length_regulator": {"lr.weight": torch.zeros(2, 2)},
+            }
+        },
+        dummy_ckpt,
+    )
+
+    engine = SeedVCEngine(device="cpu")
+    assert not engine.is_initialized
+    data = engine.load_checkpoint(dummy_ckpt)
+    assert engine.is_initialized
+    assert data["loaded"] is True
+    assert data["modules"]["cfm_layers"] == 1
+    assert data["modules"]["style_encoder_layers"] == 1
+    assert data["modules"]["vq_layers"] == 1
+    assert data["modules"]["length_regulator_layers"] == 1
+
+    # Test conversion with dummy audio files
+    sr = 22050
+    t = np.linspace(0, 1.0, sr, endpoint=False, dtype=np.float32)
+    tone = 0.3 * np.sin(2 * np.pi * 440 * t)
+    src_wav = tmp_path / "src.wav"
+    ref_wav = tmp_path / "ref.wav"
+    out_wav = tmp_path / "out.wav"
+    sf.write(str(src_wav), tone, sr)
+    sf.write(str(ref_wav), tone, sr)
+
+    duration = engine.convert_voice(src_wav, ref_wav, out_wav, language="en")
+    assert duration > 0
+    assert out_wav.exists()
+    out_data, out_sr = sf.read(str(out_wav))
+    assert out_sr == 22050
+    assert len(out_data) > 0
+
+
