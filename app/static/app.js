@@ -1119,6 +1119,8 @@ async function synthesizeVoice() {
   await saveRemembranceEdits();
 
   elements.btnSynthesizeVoice.disabled = true;
+  const loadingMsg = document.getElementById("voice-loading-message");
+  if (loadingMsg) loadingMsg.textContent = "Synthesizing memorial voice locally... This may take a moment.";
   elements.voiceLoading.style.display = "block";
 
   try {
@@ -1139,6 +1141,7 @@ async function synthesizeVoice() {
     if (data && data.synthesized_duration_s) {
       elements.voiceDurationInfo.textContent = `Duration: ${data.synthesized_duration_s.toFixed(1)}s • Model: ${data.model_used || "Local"}`;
     }
+    elements.voiceResultBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     updatePreviewIframe();
   } catch (err) {
@@ -1657,6 +1660,8 @@ function initEventListeners() {
 
       btnS2SConvert.disabled = true;
       btnS2SConvert.textContent = "⏳ Converting Speech...";
+      const loadingMsg = document.getElementById("voice-loading-message");
+      if (loadingMsg) loadingMsg.textContent = "Transcribing speech with Whisper and synthesizing memorial voice...";
       if (elements.voiceLoading) elements.voiceLoading.style.display = "block";
 
       const formData = new FormData();
@@ -1681,12 +1686,19 @@ function initEventListeners() {
           alert("Local Neural Model Notice: " + data.message);
           if (s2sMicStatus) s2sMicStatus.textContent = `Spoken transcript: "${data.transcription}". (Local neural model installation needed).`;
         } else {
-          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted successfully! Spoken transcript: "${data.transcription}"`;
+          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted successfully! Spoken transcript: "${data.transcription || '(Audio conditioned)'}"`;
           if (elements.voiceResultBox) elements.voiceResultBox.style.display = "block";
           if (elements.voiceAudioPlayer) {
             elements.voiceAudioPlayer.src = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
             elements.voiceAudioPlayer.play().catch(() => {});
           }
+          if (elements.voiceDurationInfo && data.duration_s) {
+            elements.voiceDurationInfo.textContent = `Duration: ${data.duration_s.toFixed(1)}s • Model: MMS-VITS (Neural)`;
+          }
+          if (elements.voiceResultBox) {
+            elements.voiceResultBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+          updatePreviewIframe();
         }
       } catch (err) {
         alert("Voice Conversion Notice: " + err.message);

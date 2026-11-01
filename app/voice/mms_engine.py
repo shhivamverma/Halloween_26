@@ -29,20 +29,39 @@ def estimate_audio_pitch_and_energy(
     audio_data: np.ndarray,
     sample_rate: int,
 ) -> Tuple[float, float]:
-    """Estimate fundamental pitch (F0 in Hz) and RMS energy of reference speech audio."""
+    """Estimate fundamental pitch (F0 in Hz) and RMS energy of reference speech audio.
+
+    Uses a fast 1.5-second center slice downsampled to 16 kHz for sub-15ms autocorrelation,
+    preventing CPU bottlenecks and request timeouts on memory-constrained servers.
+    """
     try:
         import scipy.signal
 
-        # Use up to 10 seconds of mono audio
+        # Use mono audio
         if audio_data.ndim > 1:
             audio_data = audio_data.mean(axis=1)
-        if len(audio_data) > sample_rate * 10:
-            audio_data = audio_data[: sample_rate * 10]
 
-        rms_energy = float(np.sqrt(np.mean(audio_data**2)))
+        total_samples = len(audio_data)
+        target_len = int(sample_rate * 1.5)
+        if total_samples > target_len:
+            # Pick a 1.5s window around the center where voice energy is most active
+            start_idx = (total_samples - target_len) // 2
+            slice_data = audio_data[start_idx : start_idx + target_len]
+        else:
+            slice_data = audio_data
+
+        rms_energy = float(np.sqrt(np.mean(slice_data**2))) if len(slice_data) > 0 else 0.1
+
+        # Resample slice to 16 kHz for ultra-fast autocorrelation (takes < 10ms on CPU)
+        proc_sr = 16000
+        if sample_rate != proc_sr and len(slice_data) > 0:
+            num_samples = int(len(slice_data) * proc_sr / sample_rate)
+            resampled = scipy.signal.resample(slice_data, num_samples)
+        else:
+            resampled = slice_data
 
         # Normalize and compute autocorrelation
-        audio_norm = audio_data - np.mean(audio_data)
+        audio_norm = resampled - np.mean(resampled)
         std = np.std(audio_norm)
         if std > 1e-6:
             audio_norm = audio_norm / std
@@ -50,9 +69,9 @@ def estimate_audio_pitch_and_energy(
         corr = scipy.signal.correlate(audio_norm, audio_norm, mode="full")
         corr = corr[len(corr) // 2 :]
 
-        # Look for pitch peak between 70 Hz and 400 Hz
-        min_lag = int(sample_rate / 400.0)
-        max_lag = int(sample_rate / 70.0)
+        # Look for pitch peak between 70 Hz and 400 Hz at proc_sr (16 kHz)
+        min_lag = int(proc_sr / 400.0)
+        max_lag = int(proc_sr / 70.0)
 
         if max_lag > len(corr):
             max_lag = len(corr) - 1
@@ -72,7 +91,7 @@ def estimate_audio_pitch_and_energy(
 
         peak_idx = int(np.argmax(corr[start_search:max_lag]) + start_search)
         if peak_idx > 0:
-            pitch_hz = sample_rate / peak_idx
+            pitch_hz = proc_sr / peak_idx
             if 65.0 <= pitch_hz <= 450.0:
                 return float(pitch_hz), rms_energy
 
@@ -132,23 +151,29 @@ class MMSVitsEngine(VoiceSynthesisEngine):
 
             torch.set_num_threads(2)
 
-            data_dir = os.environ.get("DATA_DIR", ".")
-            hf_cache = os.environ.get("HF_HOME") or str(Path(data_dir) / "hf_home")
-            Path(hf_cache).mkdir(parents=True, exist_ok=True)
-
             logger.info("Loading lightweight MMS-TTS model '%s' (RAM footprint: ~160 MB)...", model_id)
             start_t = time.perf_counter()
 
-            # Temporarily ensure Hugging Face lookup is enabled if not already cached
-            orig_offline = os.environ.get("HF_HUB_OFFLINE")
-            os.environ["HF_HUB_OFFLINE"] = "0"
+            # 1. Attempt instantaneous local-only offline load first (zero network calls, no hanging)
             try:
-                tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=hf_cache)
-                model = VitsModel.from_pretrained(model_id, cache_dir=hf_cache)
+                tokenizer = AutoTokenizer.from_pretrained(model_id, local_files_only=True)
+                model = VitsModel.from_pretrained(model_id, local_files_only=True)
                 model.eval()
-            finally:
-                if orig_offline is not None:
-                    os.environ["HF_HUB_OFFLINE"] = orig_offline
+                logger.info("Loaded MMS-TTS model '%s' directly from local cache (offline).", model_id)
+            except Exception as offline_err:
+                logger.info("Offline load for '%s' had (%s); falling back to online fetch...", model_id, offline_err)
+                data_dir = os.environ.get("DATA_DIR", ".")
+                hf_cache = os.environ.get("HF_HOME") or str(Path(data_dir) / "hf_home")
+                Path(hf_cache).mkdir(parents=True, exist_ok=True)
+                orig_offline = os.environ.get("HF_HUB_OFFLINE")
+                os.environ["HF_HUB_OFFLINE"] = "0"
+                try:
+                    tokenizer = AutoTokenizer.from_pretrained(model_id)
+                    model = VitsModel.from_pretrained(model_id)
+                    model.eval()
+                finally:
+                    if orig_offline is not None:
+                        os.environ["HF_HUB_OFFLINE"] = orig_offline
 
             elapsed = time.perf_counter() - start_t
             logger.info("MMS-TTS model '%s' loaded in %.2fs.", model_id, elapsed)

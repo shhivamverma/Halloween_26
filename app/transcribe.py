@@ -13,13 +13,21 @@ _model = None
 
 
 def get_whisper_model_instance():
-    """Lazy load singleton WhisperModel instance on CPU with int8 quantization."""
+    """Lazy load singleton WhisperModel instance on CPU with int8 quantization.
+
+    Attempts local-only offline loading first to prevent hanging on Hugging Face network checks.
+    """
     global _model
     if _model is None:
         from faster_whisper import WhisperModel
 
         model_size = get_whisper_model()
-        _model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        try:
+            _model = WhisperModel(model_size, device="cpu", compute_type="int8", local_files_only=True)
+            logger.info("Loaded Whisper model '%s' offline with local_files_only=True", model_size)
+        except Exception as exc:
+            logger.info("Whisper offline load failed (%s), fetching model...", exc)
+            _model = WhisperModel(model_size, device="cpu", compute_type="int8")
     return _model
 
 

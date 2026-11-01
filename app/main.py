@@ -34,14 +34,64 @@ from app.storage import Storage
 import app.transcribe as transcribe_module
 from app.voice import get_voice_service
 
+from contextlib import asynccontextmanager
+
 # Configure privacy-safe logger
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("ofrenda")
 
+
+def _prewarm_models_background():
+    """Warm up Whisper and default MMS-VITS models into memory during server boot."""
+    try:
+        from app.transcribe import get_whisper_model_instance
+
+        get_whisper_model_instance()
+        logger.info("Background pre-warm: Whisper model loaded into memory.")
+    except Exception as exc:
+        logger.debug("Whisper background pre-warm skipped: %s", exc)
+
+    try:
+        from app.voice.mms_engine import MMSVitsEngine
+
+        engine = MMSVitsEngine()
+        if engine.is_available():
+            for lang in ("en", "hi", "es"):
+                try:
+                    engine._get_model_and_tokenizer(lang)
+                except Exception:
+                    pass
+            logger.info("Background pre-warm: MMS-VITS models loaded into memory.")
+    except Exception as exc:
+        logger.debug("MMS-VITS background pre-warm skipped: %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager for startup pre-warming and cleanup."""
+    import threading
+
+    threading.Thread(target=_prewarm_models_background, daemon=True, name="model-prewarm").start()
+    yield
+
+
 app = FastAPI(
     title="Offline Ofrenda Keeper",
     description="Local-first Dia de los Muertos ofrenda generator",
+    lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def add_cache_control_header(request: Request, call_next):
+    """Ensure static html and js files are never cached stale by user browsers."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.endswith(".html") or path == "/" or path.endswith(".js"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 def get_storage() -> Storage:

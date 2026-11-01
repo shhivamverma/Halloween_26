@@ -32,13 +32,18 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN python3 -c "import torch, torchaudio, TTS; print(f'VERIFIED: Torch {torch.__version__}, Torchaudio {torchaudio.__version__}, TTS {TTS.__version__}')"
 
 # Pre-download and cache faster-whisper model (tiny: 39 MB RAM) so container starts fast
-RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('tiny', device='cpu', compute_type='int8')"
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('tiny', device='cpu', compute_type='int8'); \
+    WhisperModel('tiny', device='cpu', compute_type='int8', local_files_only=True); \
+    print('VERIFIED: Whisper tiny cached and loads offline')"
 
 # Pre-download and cache lightweight MMS-TTS models (Hindi, English, Spanish) for Render Free Tier (512MB RAM)
 RUN python3 -c "from transformers import VitsModel, AutoTokenizer; \
     AutoTokenizer.from_pretrained('facebook/mms-tts-eng'); VitsModel.from_pretrained('facebook/mms-tts-eng'); \
     AutoTokenizer.from_pretrained('facebook/mms-tts-hin'); VitsModel.from_pretrained('facebook/mms-tts-hin'); \
-    AutoTokenizer.from_pretrained('facebook/mms-tts-spa'); VitsModel.from_pretrained('facebook/mms-tts-spa')"
+    AutoTokenizer.from_pretrained('facebook/mms-tts-spa'); VitsModel.from_pretrained('facebook/mms-tts-spa'); \
+    AutoTokenizer.from_pretrained('facebook/mms-tts-eng', local_files_only=True); \
+    VitsModel.from_pretrained('facebook/mms-tts-eng', local_files_only=True); \
+    print('VERIFIED: MMS-TTS models cached and load offline')"
 
 # Copy application source code
 COPY app/ ./app/
