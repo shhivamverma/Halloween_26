@@ -498,11 +498,12 @@ def convert_speech_to_speech(
     confirmed_permission: bool = Form(...),
     language: Optional[str] = Form(None),
 ):
-    """Speech-to-Speech deceased voice conversion pipeline.
+    """Zero-Shot Speech-to-Speech voice conversion pipeline.
 
-    Accepts user microphone audio, transcribes it locally with faster-whisper,
-    and converts speech conditioned on the uploaded family-authorized reference voice.
-    Supports Hindi (hi), English (en), and Spanish (es).
+    Accepts user microphone audio and converts speech into the target reference speaker's voice
+    using Seed-VC zero-shot audio-to-audio conversion. Preserves the user's spoken words,
+    phrasing, and natural cadence while cloning the target speaker's vocal characteristics.
+    Supports Hindi (hi) and English (en).
     """
     if not confirmed_permission:
         raise HTTPException(

@@ -248,3 +248,20 @@ def test_mms_engine_properties():
     assert "es" in engine.supported_languages
     assert engine.is_available() is True
 
+
+def test_seed_vc_engine_properties():
+    """Verify Seed-VC zero-shot voice conversion engine properties."""
+    from app.voice.seed_vc_engine import SeedVCEngine
+    from app.voice.mock_engine import MockVoiceConversionEngine
+
+    seed_engine = SeedVCEngine()
+    assert seed_engine.name == "seed-vc"
+    assert "en" in seed_engine.supported_languages
+    assert "hi" in seed_engine.supported_languages
+
+    mock_vc = MockVoiceConversionEngine()
+    assert mock_vc.name == "mock-voice-conversion"
+    assert "en" in mock_vc.supported_languages
+    assert "hi" in mock_vc.supported_languages
+    assert mock_vc.is_available() is True
+

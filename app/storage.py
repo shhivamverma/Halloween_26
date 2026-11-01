@@ -184,7 +184,8 @@ class Storage:
             raise KeyError(f"Ofrenda {ofrenda_id} not found")
 
         voice_folder = self.get_voice_folder(ofrenda_id)
-        ref_filename = f"reference_audio.{ext}"
+        clean_ext = ext.lstrip(".") or "wav"
+        ref_filename = f"reference_audio.{clean_ext}"
         ref_path = voice_folder / ref_filename
 
         # Remove old reference audio if extension differs

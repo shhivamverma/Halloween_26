@@ -385,10 +385,10 @@ async function checkHealth() {
       const noticeText = document.getElementById("voice-engine-status-text");
 
       if (data.voice.available) {
-        elements.voiceEngineBadge.textContent = `✓ ${data.voice.active_engine || 'Neural'} Ready`;
+        elements.voiceEngineBadge.textContent = `✓ ${data.voice.active_engine || 'Seed-VC'} Ready`;
         elements.voiceEngineBadge.style.color = "var(--success)";
         if (noticeText) {
-          noticeText.innerHTML = `<strong>✓ Local Neural Voice Conversion Ready:</strong> Engine <code>${data.voice.active_engine}</code> is active. Speech-to-Speech conversion runs offline on device.`;
+          noticeText.innerHTML = `<strong>✓ Zero-Shot Speech-to-Speech Ready:</strong> Engine <code>${data.voice.active_engine}</code> is active. Microphone speech converts directly into target speaker timbre (Hindi & English).`;
         }
       } else if (data.voice.status === "insufficient_ram") {
         elements.voiceEngineBadge.textContent = "Requires 2GB RAM";
@@ -1661,7 +1661,7 @@ function initEventListeners() {
       btnS2SConvert.disabled = true;
       btnS2SConvert.textContent = "⏳ Converting Speech...";
       const loadingMsg = document.getElementById("voice-loading-message");
-      if (loadingMsg) loadingMsg.textContent = "Transcribing speech with Whisper and synthesizing memorial voice...";
+      if (loadingMsg) loadingMsg.textContent = "Running zero-shot voice conversion into memorial voice...";
       if (elements.voiceLoading) elements.voiceLoading.style.display = "block";
 
       const formData = new FormData();
@@ -1683,17 +1683,17 @@ function initEventListeners() {
         const data = await parseJsonResponse(res, "Voice conversion failed");
 
         if (data.status === "unavailable") {
-          alert("Local Neural Model Notice: " + data.message);
-          if (s2sMicStatus) s2sMicStatus.textContent = `Spoken transcript: "${data.transcription}". (Local neural model installation needed).`;
+          alert("Zero-Shot Voice Conversion Notice: " + data.message);
+          if (s2sMicStatus) s2sMicStatus.textContent = `Conversion setup notice: ${data.message}`;
         } else {
-          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted successfully! Spoken transcript: "${data.transcription || '(Audio conditioned)'}"`;
+          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted speech into memorial voice successfully (${(data.duration_s || 0).toFixed(1)}s)!`;
           if (elements.voiceResultBox) elements.voiceResultBox.style.display = "block";
           if (elements.voiceAudioPlayer) {
             elements.voiceAudioPlayer.src = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
             elements.voiceAudioPlayer.play().catch(() => {});
           }
           if (elements.voiceDurationInfo && data.duration_s) {
-            elements.voiceDurationInfo.textContent = `Duration: ${data.duration_s.toFixed(1)}s • Model: MMS-VITS (Neural)`;
+            elements.voiceDurationInfo.textContent = `Duration: ${data.duration_s.toFixed(1)}s • Engine: ${data.engine_used || 'Seed-VC'}`;
           }
           if (elements.voiceResultBox) {
             elements.voiceResultBox.scrollIntoView({ behavior: "smooth", block: "nearest" });

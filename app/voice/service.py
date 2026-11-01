@@ -1,4 +1,4 @@
-"""Voice synthesis coordination service managing consent, engines, and storage."""
+"""Voice synthesis and zero-shot voice conversion coordination service."""
 
 import logging
 import os
@@ -8,97 +8,102 @@ from typing import Dict, List, Optional
 
 from app.schemas import VoiceConsentRecord, VoiceProfileMetadata
 from app.storage import Storage
-from app.voice.base import VoiceSynthesisEngine
+from app.voice.base import VoiceConversionEngine, VoiceSynthesisEngine
 from app.voice.mms_engine import MMSVitsEngine
-from app.voice.mock_engine import MockVoiceEngine
+from app.voice.mock_engine import MockVoiceConversionEngine, MockVoiceEngine
 from app.voice.openvoice_engine import OpenVoiceEngine
+from app.voice.seed_vc_engine import SeedVCEngine
 from app.voice.xtts_engine import XTTSv2Engine, get_effective_cgroup_limit_mb
 
 logger = logging.getLogger("ofrenda.voice")
 
 
 class VoiceService:
-    """Coordinates local speech synthesis, consent verification, and provenance stamping."""
+    """Coordinates local speech synthesis, zero-shot voice conversion, consent verification, and provenance stamping."""
 
     def __init__(self):
+        # Genuine Zero-Shot Speech-to-Speech Voice Conversion engines
+        self._seed_vc = SeedVCEngine()
+        self._mock_vc = MockVoiceConversionEngine()
+
+        # Text-to-Speech remembrance reading engines (decoupled from S2S voice conversion)
         self._mms = MMSVitsEngine()
         self._xtts = XTTSv2Engine()
         self._openvoice = OpenVoiceEngine()
         self._mock = MockVoiceEngine()
 
-    def is_neural_engine_available(self) -> bool:
-        """Check if a genuine neural voice conversion engine (MMS, XTTS, or OpenVoice) is available."""
-        return self._mms.is_available() or self._xtts.is_available() or self._openvoice.is_available()
-
-    def get_active_engine(self) -> Optional[VoiceSynthesisEngine]:
-        """Return the best available local neural synthesis engine, or test mock when running tests.
-
-        MMS-VITS is our primary default engine:
-        - Memory footprint: ~160 MB RAM (runs fluidly on Render Free Tier 512 MB limit)
-        - Native high-fidelity speech for Hindi (hi), English (en), and Spanish (es)
-        - Reference voice pitch ($F_0$) and cadence conditioning
-        - Zero extra cost, $0/month forever.
-        """
+    def get_active_conversion_engine(self) -> Optional[VoiceConversionEngine]:
+        """Return the active Zero-Shot Speech-to-Speech Voice Conversion engine."""
         override = os.environ.get("VOICE_ENGINE", "").lower()
         is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or override == "mock")
 
-        # In automated test suite or explicit mock override, provide MockVoiceEngine
+        if is_test_env or override == "mock":
+            return self._mock_vc
+
+        if self._seed_vc.is_available():
+            return self._seed_vc
+
+        return self._mock_vc if is_test_env else None
+
+    def is_neural_engine_available(self) -> bool:
+        """Check if a genuine neural voice conversion or synthesis engine is available."""
+        return self._seed_vc.is_available() or self._mms.is_available()
+
+    def get_active_engine(self) -> Optional[VoiceSynthesisEngine]:
+        """Return the active text-to-speech synthesis engine (for remembrance reading)."""
+        override = os.environ.get("VOICE_ENGINE", "").lower()
+        is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or override == "mock")
+
         if is_test_env or override == "mock":
             return self._mock
 
-        # If user explicitly requests XTTS (e.g. on a dedicated high-RAM GPU instance)
         if override == "xtts" and self._xtts.is_available():
             return self._xtts
         if override == "openvoice" and self._openvoice.is_available():
             return self._openvoice
 
-        # Primary engine: MMS-VITS (Free-Tier Optimized, ~160MB RAM)
         if self._mms.is_available():
             return self._mms
 
-        # Fallback to XTTS or OpenVoice if MMS is unavailable
-        if self._xtts.is_available():
-            return self._xtts
-        if self._openvoice.is_available():
-            return self._openvoice
-
-        # In production without neural models installed, return None to prevent fake sine-wave beeps
         return None
 
     def get_engine_status(self) -> Dict:
         """Report genuine engine status and dependency transparency for health checks."""
-        engine = self.get_active_engine()
+        vc_engine = self.get_active_conversion_engine()
         is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("VOICE_ENGINE") == "mock")
 
-        if engine is not None and engine != self._mock:
+        if vc_engine is not None and vc_engine != self._mock_vc:
             return {
                 "available": True,
-                "engine": engine.name,
-                "active_engine": engine.name,
+                "engine": vc_engine.name,
+                "active_engine": vc_engine.name,
+                "conversion_engine": vc_engine.name,
                 "status": "ready",
-                "supported_languages": engine.supported_languages,
-                "message": f"Local neural voice engine '{engine.name}' is operational (Free-Tier Optimized, ~160MB RAM).",
+                "supported_languages": vc_engine.supported_languages,
+                "message": f"Zero-Shot Speech-to-Speech Voice Conversion Engine '{vc_engine.name}' is operational.",
             }
         elif is_test_env:
             return {
                 "available": True,
-                "engine": self._mock.name,
-                "active_engine": self._mock.name,
+                "engine": self._mock_vc.name,
+                "active_engine": self._mock_vc.name,
+                "conversion_engine": self._mock_vc.name,
                 "status": "test_mock_ready",
-                "supported_languages": self._mock.supported_languages,
-                "message": "Test mock voice engine active for automated test verification.",
+                "supported_languages": self._mock_vc.supported_languages,
+                "message": "Test mock voice conversion engine active for automated test verification.",
             }
         else:
             return {
                 "available": False,
-                "engine": "neural-voice-conversion",
+                "engine": "seed-vc",
                 "active_engine": "none",
+                "conversion_engine": "none",
                 "status": "dependencies_missing",
-                "supported_languages": ["es", "en", "hi"],
-                "missing_dependencies": ["torch", "coqui-tts"],
-                "install_instructions": "pip install torch coqui-tts",
+                "supported_languages": ["en", "hi"],
+                "missing_dependencies": ["torch", "torchaudio", "transformers"],
+                "install_instructions": "pip install torch torchaudio transformers",
                 "message": (
-                    "Neural voice conversion dependencies ('torch' and 'TTS') are not installed in the local environment. "
+                    "Zero-Shot Voice Conversion engine (Seed-VC) dependencies are not installed in the local environment. "
                     "In accordance with our strict ethical standards, synthetic sine wave beeps are disabled."
                 ),
             }
@@ -210,10 +215,12 @@ class VoiceService:
         storage: Storage,
         target_language: Optional[str] = None,
     ) -> Dict:
-        """Convert user recorded microphone audio into speech matching the reference voice profile.
+        """Convert user recorded microphone speech into the target speaker's voice using Zero-Shot S2S conversion.
 
-        Pipeline: User mic audio -> Faster-Whisper transcription -> Reference voice conditioning -> Output audio.
-        Supports Hindi (hi), English (en), and Spanish (es).
+        Pipeline: User source speech audio -> Seed-VC Zero-Shot conversion -> Target timbre audio.
+        Preserves the source speaker's exact spoken words, phrasing, and rhythm while cloning the
+        target loved one's vocal timbre and acoustic color.
+        Supports Hindi (hi) and English (en).
         """
         if not consent.confirmed_permission:
             raise ValueError("Explicit family authorization is strictly required for voice conversion.")
@@ -226,81 +233,74 @@ class VoiceService:
         if not ref_path or not ref_path.exists():
             raise ValueError("No reference voice audio found. Please upload a family-authorized reference recording first.")
 
-        voice_folder = storage.get_voice_folder(ofrenda_id)
-        user_input_path = voice_folder / f"user_mic_input{ext}"
-        user_input_path.write_bytes(user_audio_bytes)
+        if not user_audio_bytes or len(user_audio_bytes) < 500:
+            raise ValueError("Microphone recording is empty or corrupt. Please record your speech clearly.")
 
-        # 1. Transcribe user microphone audio locally with faster-whisper
-        import gc
-        import app.transcribe as transcribe_mod
-
-        hint_lang = (target_language or record.language or "es").lower()
-        try:
-            tx_result = transcribe_mod.transcribe(user_input_path, language_hint=hint_lang)
-            transcribed_text = tx_result.get("text", "").strip()
-            detected_lang = tx_result.get("language", hint_lang)
-        except Exception as ex:
-            logger.warning("Whisper transcription of microphone speech failed: %s", ex)
-            transcribed_text = ""
-            detected_lang = hint_lang
-        finally:
-            gc.collect()
-
-        engine = self.get_active_engine()
-        if engine is None:
+        conversion_engine = self.get_active_conversion_engine()
+        if conversion_engine is None:
             return {
                 "status": "unavailable",
                 "model_ready": False,
-                "transcription": transcribed_text,
-                "detected_language": detected_lang,
+                "engine_used": "none",
                 "message": (
-                    "Neural voice conversion dependencies ('torch' and 'TTS'/'coqui-tts') are not installed in the local environment. "
-                    "To perform genuine Speech-to-Speech voice conversion, install: pip install torch coqui-tts. "
-                    "Generating fake sine-wave beeps is disabled."
+                    "Zero-Shot Speech-to-Speech Voice Conversion engine (Seed-VC) is not installed in the local environment. "
+                    "Install with: pip install torch torchaudio transformers soundfile. "
+                    "In accordance with memorial integrity guidelines, synthetic sine wave beeps are disabled."
                 ),
             }
 
-        # 2. Determine target language for synthesis
-        chosen_lang = (target_language or detected_lang or record.language or "es").lower()
-        if chosen_lang not in engine.supported_languages:
-            chosen_lang = "es" if "es" in engine.supported_languages else engine.supported_languages[0]
+        chosen_lang = (target_language or record.language or "en").lower()
+        if chosen_lang not in conversion_engine.supported_languages:
+            chosen_lang = "en" if "en" in conversion_engine.supported_languages else conversion_engine.supported_languages[0]
 
-        # 3. Run conversion using active engine
+        voice_folder = storage.get_voice_folder(ofrenda_id)
+        user_input_path = voice_folder / f"user_mic_input{ext}"
         out_wav_path = voice_folder / "remembrance_synthesized.wav"
-        text_to_synthesize = transcribed_text or record.remembrance or f"Memoria de {record.name}"
 
-        duration_s = engine.synthesize(
-            text=text_to_synthesize,
-            reference_audio_path=ref_path,
-            output_path=out_wav_path,
-            language=chosen_lang,
-            speed=1.0,
-        )
+        user_input_path.write_bytes(user_audio_bytes)
 
-        from app.voice.watermark import stamp_wav_provenance
-        watermarked_wav = stamp_wav_provenance(
-            out_wav_path.read_bytes(),
-            authorized_by=consent.authorized_by,
-            deceased_name=record.name,
-            model_name=engine.name,
-        )
+        try:
+            # Execute genuine zero-shot speech-to-speech voice conversion
+            duration_s = conversion_engine.convert_voice(
+                source_audio_path=user_input_path,
+                reference_audio_path=ref_path,
+                output_path=out_wav_path,
+                language=chosen_lang,
+                diffusion_steps=25,
+            )
 
-        updated_record = storage.save_synthesized_voice(
-            ofrenda_id=ofrenda_id,
-            wav_bytes=watermarked_wav,
-            model_used=engine.name,
-            language=chosen_lang,
-            duration_s=duration_s,
-        )
+            from app.voice.watermark import stamp_wav_provenance
 
-        return {
-            "status": "success",
-            "model_ready": True,
-            "transcription": transcribed_text,
-            "detected_language": chosen_lang,
-            "duration_s": duration_s,
-            "voice_profile": updated_record.voice_profile.model_dump(),
-        }
+            watermarked_wav = stamp_wav_provenance(
+                out_wav_path.read_bytes(),
+                authorized_by=consent.authorized_by,
+                deceased_name=record.name,
+                model_name=conversion_engine.name,
+            )
+
+            updated_record = storage.save_synthesized_voice(
+                ofrenda_id=ofrenda_id,
+                wav_bytes=watermarked_wav,
+                model_used=conversion_engine.name,
+                language=chosen_lang,
+                duration_s=duration_s,
+            )
+
+            return {
+                "status": "success",
+                "model_ready": True,
+                "engine_used": conversion_engine.name,
+                "detected_language": chosen_lang,
+                "duration_s": duration_s,
+                "voice_profile": updated_record.voice_profile.model_dump(),
+            }
+        finally:
+            # Safely clean up raw user microphone upload file
+            try:
+                if user_input_path.exists():
+                    user_input_path.unlink()
+            except Exception as clean_err:
+                logger.debug("Could not unlink temp user mic file: %s", clean_err)
 
 
 _voice_service_singleton = None
