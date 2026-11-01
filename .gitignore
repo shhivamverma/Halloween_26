@@ -11,3 +11,6 @@ htmlcov/
 dist/
 build/
 hf_home/
+checkpoints/
+tmp_seed_vc/
+
