@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from app.schemas import VoiceConsentRecord, VoiceProfileMetadata
 from app.storage import Storage
 from app.voice.base import VoiceConversionEngine, VoiceSynthesisEngine
+from app.voice.kokoro_engine import KokoroOpenVoiceEngine
 from app.voice.mms_engine import MMSVitsEngine
 from app.voice.mock_engine import MockVoiceConversionEngine, MockVoiceEngine
 from app.voice.openvoice_engine import OpenVoiceEngine
@@ -22,7 +23,10 @@ class VoiceService:
     """Coordinates local speech synthesis, zero-shot voice conversion, consent verification, and provenance stamping."""
 
     def __init__(self):
-        # Genuine Zero-Shot Speech-to-Speech Voice Conversion engines
+        # Genuine Zero-Shot Voice Conversion engines
+        # Primary: Kokoro-82M + OpenVoice V2 (High-naturalness, English & Experimental Hindi)
+        # Alternative: Seed-VC (Direct acoustic flow matching, English-viable; collapses Hindi)
+        self._kokoro_vc = KokoroOpenVoiceEngine()
         self._seed_vc = SeedVCEngine()
         self._mock_vc = MockVoiceConversionEngine()
 
@@ -33,12 +37,25 @@ class VoiceService:
         self._mock = MockVoiceEngine()
 
     def get_active_conversion_engine(self) -> Optional[VoiceConversionEngine]:
-        """Return the active Zero-Shot Speech-to-Speech Voice Conversion engine."""
+        """Return the active Zero-Shot Speech-to-Speech Voice Conversion engine.
+
+        Selection priority:
+        1. Test environments / mock override -> MockVoiceConversionEngine
+        2. Explicit 'seed-vc' override -> SeedVCEngine (English-only alternative)
+        3. Primary default -> KokoroOpenVoiceEngine
+        4. Fallback alternative -> SeedVCEngine
+        """
         override = os.environ.get("VOICE_ENGINE", "").lower()
         is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or override == "mock")
 
         if is_test_env or override == "mock":
             return self._mock_vc
+
+        if override == "seed-vc" and self._seed_vc.is_available():
+            return self._seed_vc
+
+        if self._kokoro_vc.is_available():
+            return self._kokoro_vc
 
         if self._seed_vc.is_available():
             return self._seed_vc
@@ -47,7 +64,7 @@ class VoiceService:
 
     def is_neural_engine_available(self) -> bool:
         """Check if a genuine neural voice conversion or synthesis engine is available."""
-        return self._seed_vc.is_available() or self._mms.is_available()
+        return self._kokoro_vc.is_available() or self._seed_vc.is_available() or self._mms.is_available()
 
     def get_active_engine(self) -> Optional[VoiceSynthesisEngine]:
         """Return the active text-to-speech synthesis engine (for remembrance reading)."""
@@ -214,14 +231,17 @@ class VoiceService:
         consent: VoiceConsentRecord,
         storage: Storage,
         target_language: Optional[str] = None,
+        transcript: Optional[str] = None,
+        engine_name: Optional[str] = None,
     ) -> Dict:
-        """Convert user recorded microphone speech into the target speaker's voice using Zero-Shot S2S conversion.
+        """Convert user recorded microphone speech into the target speaker's voice using Zero-Shot conversion.
 
-        Pipeline: User source speech audio -> Seed-VC Zero-Shot conversion -> Target timbre audio.
-        Preserves the source speaker's exact spoken words, phrasing, and rhythm while cloning the
-        target loved one's vocal timbre and acoustic color.
-        Supports Hindi (hi) and English (en).
+        Supports:
+        - Primary: Kokoro-82M + OpenVoice V2 (High-naturalness, English & Experimental Hindi)
+        - Alternative: Seed-VC (Direct acoustic flow matching, English-viable; collapses Hindi)
         """
+        import inspect
+
         if not consent.confirmed_permission:
             raise ValueError("Explicit family authorization is strictly required for voice conversion.")
 
@@ -236,15 +256,23 @@ class VoiceService:
         if not user_audio_bytes or len(user_audio_bytes) < 500:
             raise ValueError("Microphone recording is empty or corrupt. Please record your speech clearly.")
 
-        conversion_engine = self.get_active_conversion_engine()
+        # Engine resolution (respecting user override or default)
+        is_test_env = bool(os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("VOICE_ENGINE") == "mock")
+        if is_test_env:
+            conversion_engine = self._mock_vc
+        elif (engine_name or "").lower() == "seed-vc" and self._seed_vc.is_available():
+            conversion_engine = self._seed_vc
+        else:
+            conversion_engine = self.get_active_conversion_engine()
+
         if conversion_engine is None:
             return {
                 "status": "unavailable",
                 "model_ready": False,
                 "engine_used": "none",
                 "message": (
-                    "Zero-Shot Speech-to-Speech Voice Conversion engine (Seed-VC) is not installed in the local environment. "
-                    "Install with: pip install torch torchaudio transformers soundfile. "
+                    "Zero-Shot Voice Conversion engine is not installed in the local environment. "
+                    "Install with: pip install torch kokoro transformers soundfile. "
                     "In accordance with memorial integrity guidelines, synthetic sine wave beeps are disabled."
                 ),
             }
@@ -260,14 +288,19 @@ class VoiceService:
         user_input_path.write_bytes(user_audio_bytes)
 
         try:
-            # Execute genuine zero-shot speech-to-speech voice conversion
-            duration_s = conversion_engine.convert_voice(
-                source_audio_path=user_input_path,
-                reference_audio_path=ref_path,
-                output_path=out_wav_path,
-                language=chosen_lang,
-                diffusion_steps=25,
-            )
+            # Build engine-specific kwargs safely
+            sig_params = inspect.signature(conversion_engine.convert_voice).parameters
+            call_kwargs = {
+                "source_audio_path": user_input_path,
+                "reference_audio_path": ref_path,
+                "output_path": out_wav_path,
+                "language": chosen_lang,
+                "diffusion_steps": 25,
+            }
+            if "text" in sig_params and transcript:
+                call_kwargs["text"] = transcript.strip()
+
+            duration_s = conversion_engine.convert_voice(**call_kwargs)
 
             from app.voice.watermark import stamp_wav_provenance
 
@@ -292,6 +325,7 @@ class VoiceService:
                 "engine_used": conversion_engine.name,
                 "detected_language": chosen_lang,
                 "duration_s": duration_s,
+                "experimental_hindi": bool(chosen_lang == "hi" and conversion_engine.name in ("kokoro-openvoice", "mock-voice-conversion")),
                 "voice_profile": updated_record.voice_profile.model_dump(),
             }
         finally:

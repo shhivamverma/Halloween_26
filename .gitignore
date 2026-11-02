@@ -1,16 +1,78 @@
+# ==============================================================================
+# Offline Ofrenda Keeper - Git Ignore Rules
+# ==============================================================================
+
+# Data and runtime storage (contains family memorials, photos, audio)
 data/
-.env
+ollama_data/
+*.sqlite
+*.db
+
+# Virtual environments
 .venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized files
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
-.coverage
-htmlcov/
-*.egg-info/
-dist/
-build/
+*.so
+
+# Model weight caches & temporary checkpoints
 hf_home/
 checkpoints/
 tmp_seed_vc/
+.cache/
 
+# Audio files (exclude runtime generated audio, retain test fixtures)
+*.wav
+*.mp3
+*.ogg
+*.webm
+*.m4a
+*.flac
+!tests/fixtures/*.wav
+
+# Logs, test summaries, and temporary run files
+scripts/*summary*.json
+scripts/phase*.py
+scripts/test_phase*.py
+scripts/verify_phase*.py
+scripts/poc_*.py
+scripts/compare_*.py
+scripts/diagnose_*.py
+scripts/experiment_*.py
+scripts/audit_git_history.py
+scripts/capture_ui_screenshot.py
+*.log
+*.tmp
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Operating system & IDE artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Build and distribution
+dist/
+build/
+*.egg-info/

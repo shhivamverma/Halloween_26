@@ -1,9 +1,13 @@
-# Optional dependencies for Local AI Voice Recreation feature
-# Install only if enabling offline voice synthesis:
-#   pip install -r requirements-voice.txt
+# OPTIONAL RESEARCH / NON-COMMERCIAL EXPERIMENTAL DEPENDENCIES ONLY
+#
+# NOTE: The primary production voice recreation engine (Kokoro-82M + OpenVoice V2)
+# is permissively licensed (Apache-2.0 / MIT) and already included in requirements.txt.
+#
+# This file is strictly for optional legacy experimentation with Coqui XTTS-v2.
+# XTTS-v2 model weights are released under the Coqui Public Model License (CPML),
+# which restricts usage to NON-COMMERCIAL personal or research projects only.
+# DO NOT INSTALL FOR COMMERCIAL DISTRIBUTION.
 
-torch>=2.2.0
-torchaudio>=2.2.0
 TTS>=0.22.0
 soundfile>=0.12.1
 scipy>=1.11.0

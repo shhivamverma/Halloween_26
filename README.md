@@ -10,9 +10,9 @@ pinned: false
 
 # 🕯️ Offline Ofrenda Keeper
 
-> **A fully local app that turns a family's memories of someone they love (typed stories, a recorded voice note, favorite foods and songs, a photo) into a beautiful digital ofrenda page and a written remembrance.**
+> **A 100% local, offline-first memorial keeper that turns family memories—typed stories, recorded voice notes, favorite offerings, photographs, and authorized voice recreation—into a permanent digital ofrenda altar and exportable remembrance.**
 
-Built for **Hacktoberfest 2026, Week 4: "Ghost in the Machine"**.
+Built for **Día de los Muertos** with an uncompromising commitment to privacy, dignity, and open-source software.
 
 ```
        ░█▀▀█ ░█▀▀▀ ░█▀▀█ ░█▀▀▀ ░█▄─░█ ░█▀▀▄ ─█▀▀█
@@ -23,145 +23,226 @@ Built for **Hacktoberfest 2026, Week 4: "Ghost in the Machine"**.
 
 ---
 
-## 🌺 Why Open-Source AI is Essential
+## 🌺 Why Local, Offline AI is Essential
 
-On Día de los Muertos, families construct altars (*ofrendas*) with photos, candles, cempasúchil marigolds, and the favorite foods, drinks, and songs of deceased loved ones. Using AI for grief and memorialization requires extraordinary respect and ethical responsibility:
+On Día de los Muertos, families construct altars (*ofrendas*) with photos, candles, cempasúchil marigolds, and the favorite foods, drinks, and songs of deceased loved ones. Using AI for memorialization requires extraordinary respect and ethical responsibility:
 
-- **Absolute Privacy:** Voice recordings, family photos, and stories of deceased relatives are among the most intimate, sacred data a family has. They must never be uploaded to remote cloud servers or used to train corporate models.
-- **Works with Wi-Fi Off:** Runs completely in Airplane Mode. Once models are cached, zero internet connection is required.
-- **No Lock-In:** Closed AI services can shut down, change API terms, or charge subscriptions. A local model and a plain, self-contained HTML file can be kept by a family forever.
-- **Swappable Models:** Users can seamlessly choose between Llama 3.2, Qwen, or Gemma, or switch Whisper model sizes depending on hardware capabilities and language preferences.
-- **Free to Run:** No API keys, no paywalls, no per-use charges.
-- **Permanent Open Output:** The resulting altar page is a single self-contained HTML document with inline CSS, inline SVGs, and base64-embedded photos. It opens on any device, now and decades into the future.
+- **Absolute Local Privacy:** Voice recordings, family photos, and stories of deceased relatives are among the most intimate, sacred data a family has. They must **never** be uploaded to remote cloud servers or used to train corporate models.
+- **Works with Wi-Fi Off (Airplane Mode):** Once model weights are locally cached, zero internet connection is required.
+- **No Vendor Lock-In:** Closed AI services can shut down, change API terms, or charge subscriptions. A local model and a self-contained HTML file can be kept by a family for decades.
+- **Free and Open-Source:** No API keys, no paywalls, no recurring charges.
+- **Permanent Open Output:** The resulting altar page is a single, self-contained HTML document with inline CSS, SVGs, and base64-embedded photos and audio. It opens on any device, offline, forever.
 
 ---
 
-## ⚡ 5-Command Quickstart
+## 📸 Visual Previews
 
-```bash
+### Memorial Altar (Single-File Standalone HTML / PDF)
+![Memorial Altar Preview](docs/assets/altar_preview.png)
+
+### Voice Studio (Microphone Recording, Review Box & Tone Conversion)
+![Voice Studio Preview](docs/assets/voice_studio_preview.png)
+
+---
+
+## ⚡ Quickstart & Local Installation
+
+### Windows Installation (PowerShell)
+
+```powershell
 # 1. Clone repository
-git clone https://github.com/your-username/ofrenda-keeper.git && cd ofrenda-keeper
+git clone https://github.com/your-username/ofrenda-keeper.git
+cd ofrenda-keeper
 
-# 2. Set up virtual environment and install dependencies
-python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# 2. Create virtual environment and activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3. Install CPU PyTorch first, then dependencies
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 
-# 3. Pull Ollama model & warm Whisper cache (one-time step with internet)
-bash scripts/fetch_models.sh
+# 4. Pre-cache model weights (one-time step with internet)
+.\scripts\fetch_models.ps1
 
-# 4. (Optional) Disconnect Wi-Fi / enable Airplane Mode to verify offline operation!
-export HF_HUB_OFFLINE=1  # Windows PowerShell: $env:HF_HUB_OFFLINE="1"
+# 5. Launch the application in pure offline mode (loopback only: 127.0.0.1)
+$env:HF_HUB_OFFLINE = "1"
+.\scripts\run_production.bat
 
-# 5. Launch the application
-uvicorn app.main:app --reload
+# Optional: To explicitly expose over local Wi-Fi (displays security warning):
+# .\scripts\run_production.bat --lan
 ```
 
 Visit **http://127.0.0.1:8000** in your browser.
 
----
-
-## 📐 Architecture & Workflow
-
-```
-[Browser UI]                  [FastAPI on localhost]                [Local models]
-1. About them       --------> POST /api/ofrendas       --------> data/ofrendas/<id>/ofrenda.json
-2. Offerings (foods, songs, objects)
-3. Photo            --------> POST /api/ofrendas/<id>/photo ---> photo.jpg|png|webp
-4. Memories:
-   type text        --------> PATCH /api/ofrendas/<id>
-   record voice     --------> POST /api/ofrendas/<id>/audio ---> faster-whisper -> transcript
-5. Generate         --------> POST /api/ofrendas/<id>/generate-> Ollama -> remembrance
-6. Preview          <-------- GET /api/ofrendas/<id>/page       (Jinja2 -> one HTML file)
-7. Save             Download HTML | Print/Save as PDF | Export ZIP
-```
-
----
-
-## 📊 Local Model Benchmarks
-
-Tested on a standard laptop running CPU inference (8GB-16GB RAM):
-
-| Model | Task | Device | Word Count | Avg Latency | Throughput |
-|---|---|---|---|---|---|
-| **faster-whisper (base)** | Speech-to-Text | CPU (int8) | — | 3.16s for 3.2s audio | ~1.0x Real-Time (RTFx: 1.0) |
-| **llama3.2:3b** (Default) | Remembrance Generation | Ollama (CPU) | 154 words | 37.1s | **~5.5 tokens/sec** |
-| **qwen3:1.7b** | Remembrance Generation | Ollama (CPU) | 47 words | 48.2s | ~1.3 tokens/sec |
-
-*Notice: If Ollama is offline or unavailable, the built-in deterministic template fallback executes in **0.003 seconds**, guaranteeing 100% application uptime.*
-
----
-
-## 🛡️ Privacy & Offline Hardening Guarantees
-
-1. **Local Network Guard:** `app/net.py` wraps all HTTP client calls. Any outbound request directed to a host other than `127.0.0.1` or `localhost` immediately raises a `ValueError`.
-2. **Offline Integrity Verification:** Run `python scripts/check_offline.py` to recursively scan all application source files, templates, styles, and a live-rendered ofrenda for external URLs. It exits `0` only if zero non-local URLs are found.
-3. **No Story Logging:** System logs record inference timing and token throughput only; family memory texts and audio transcripts are never written to server logs.
-4. **Data Isolation:** User records reside solely in `./data/ofrendas/` (which is gitignored).
-
----
-
-## 🔄 How to Swap Models
-
-The UI automatically queries `GET /api/health` and lists all models currently installed in your local Ollama daemon.
-
-To install and use alternative open-source models:
-```bash
-# Faster English & Spanish alternative
-ollama pull llama3.2:3b
-
-# Lightweight multilingual model
-ollama pull qwen2.5:3b
-
-# High parameter option for 16GB+ systems
-ollama pull llama3.1:8b
-```
-Select the desired model from the dropdown in **Step 4** and click **Generate** or **Regenerate**.
-
----
-
-## 🧪 Running Automated Tests
+### Linux / macOS Installation
 
 ```bash
-# Run fast mocked unit test suite (runs in seconds)
-pytest -q
+# 1. Clone and create virtual environment
+git clone https://github.com/your-username/ofrenda-keeper.git && cd ofrenda-keeper
+python3 -m venv .venv && source .venv/bin/activate
 
-# Run offline security check script
+# 2. Install CPU PyTorch and dependencies
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+
+# 3. Pre-cache model weights
+bash scripts/fetch_models.sh
+
+# 4. Launch the server (loopback only: 127.0.0.1)
+export HF_HUB_OFFLINE=1
+bash scripts/run_production.sh
+
+# Optional: To explicitly expose over local Wi-Fi (displays security warning):
+# bash scripts/run_production.sh --lan
+```
+
+---
+
+## 🎙️ Voice Studio: Whisper ASR → Kokoro TTS → OpenVoice Tone-Colour Conversion
+
+Offline Ofrenda Keeper does **not** perform ungrounded or direct speech-to-speech latent conversion. Direct conversion is prone to acoustic hallucination and word dropping. Instead, the Voice Studio executes a reliable, grounded three-stage pipeline:
+
+```
+[1. User Recording]      ──> Spoken memory recorded via microphone in the browser (WebM/Opus)
+            │
+            ▼
+[2. Whisper ASR]         ──> faster-whisper (tiny) transcribes audio locally in ~1-2s
+            │
+            ▼
+[3. Human Review/Edit]   ──> User reviews and edits transcript in the UI (English or Devanagari)
+            │
+            ▼
+[4. Consent Gating]      ──> Backend verifies affirmative permission and authorizer identity
+            │
+            ▼
+[5. Kokoro-82M TTS]      ──> Natural base speech generated from the corrected transcript
+            │
+            ▼
+[6. OpenVoice V2 VC]     ──> ToneColorConverter transfers vocal timbre from reference audio
+            │
+            ▼
+[7. Watermarked Audio]   ──> RIFF INFO provenance tags stamped; playable and downloadable
+```
+
+### Supported Languages & Experimental Disclosures:
+- **English**: Full native acoustic synthesis via Kokoro `af_heart` and OpenVoice V2 converter.
+- **Hindi (Devanagari)**: Native G2P phonemization via Kokoro `hf_alpha`. **Explicitly labeled as experimental** because OpenVoice V2 tone conversion was trained predominantly on English and Chinese acoustic data.
+
+---
+
+## 💻 Hardware Requirements & RAM Overhead Reconciliation
+
+### Memory Breakdown & Recommendation
+Neural speech processing on CPU requires significant working memory. To run reliably without system thrashing:
+
+```
+FastAPI Base Server:                 ~180 MB
++ Whisper 'tiny' Model:              ~75 MB
++ Kokoro-82M Base TTS:               ~320 MB
++ OpenVoice V2 ToneColorConverter:   ~280 MB
+Peak Working Memory (Inference):     ~1.4 GB to 1.7 GB (Python Process)
+-----------------------------------------------------------------------
++ Operating System (Windows 11 / macOS): ~3.0 GB to 4.2 GB
++ Web Browser (Chrome/Edge with tabs):   ~1.0 GB to 1.5 GB
+=======================================================================
+Total Combined Working Memory:           ~5.5 GB to 7.4 GB
+```
+
+- **Minimum Hardware Requirement: 8 GB System RAM (4 CPU cores)**  
+  On an 8 GB machine (~7.2 GB usable), total system memory utilization sits around 80–90% during conversion. This provides sufficient room for the OS and browser without heavy paging.
+- **Recommended Hardware: 16 GB System RAM**  
+  Ensures comfortable headroom for smooth multitasking and multiple ofrendas.
+- **Cloud Containers (512 MB Free Tiers — e.g. Render Free, Fly.io Free):**  
+  **UNVIABLE.** When PyTorch and the neural models allocate memory during inference (~1.4 GB), the container kernel immediately issues `SIGKILL (OOM / exit code 137)`. Cloud hosting requires at least 2 GB to 4 GB RAM.
+
+---
+
+## 🛡️ Security, Privacy & Storage Disclosures
+
+> [!WARNING]
+> **Storage & Network Security Disclosures:**
+> 1. **Unencrypted Local Disk Storage:** All memorial files in `data/ofrendas/` (memorial JSON records, full-resolution photos, transcribed audio, synthesized audio, and reference recordings) are saved in plaintext without filesystem encryption. Protection of sensitive family assets requires user-managed OS disk encryption (e.g., BitLocker on Windows, FileVault on macOS, or LUKS on Linux).
+> 2. **No LAN Authentication / Access Controls:** When executed with `--host 0.0.0.0` or via `run_production.bat`, the application exposes HTTP endpoints across your local Wi-Fi network without user logins, passwords, session tokens, or rate limits. Anyone connected to the same LAN can create, view, download, or delete memorials. For untrusted networks, bind to `127.0.0.1` only or place behind a reverse proxy (Caddy / Nginx) with HTTP Basic Authentication or a private VPN.
+
+### Audio Watermarking Verification & Limitations:
+- **Implementation:** Synthetic audio is stamped with standard RIFF INFO metadata chunks (`IART`, `INAM`, `ICMT`, `ISFT`) stating: `"AI-Generated Voice Recreation - For Remembrance Only"`.
+- **Technical Limitations:**  
+  - This is a container metadata tag, **not** an inaudible acoustic frequency-domain watermark embedded into the audio samples.
+  - The metadata is easily stripped or discarded if the WAV file is transcoded, converted to MP3/AAC, or uploaded to social media platforms.
+  - Stamping an authorizer's name proves only that the user submitted that text in the web form; **it does NOT guarantee legal consent, authenticity, or tamper-proof provenance.** It is an advisory provenance notice for compliant media players.
+
+### Automated Security Guardrails:
+1. **Consent Enforcement:** Endpoints strictly require `confirmed_permission: true` and a non-empty `authorized_by` string. Missing consent returns `HTTP 400 Bad Request`.
+2. **Directory & UUID Isolation:** All ofrenda operations validate UUID paths. Directory traversal attempts (`../`) are blocked with `HTTP 400/404`.
+3. **MIME Whitelisting:** Strictly validates image formats (PNG, JPG, WebP) and audio formats (WebM, WAV, MP3, OGG, M4A). Malicious formats return `HTTP 415`.
+4. **Concurrency Lock:** A backend mutex prevents duplicate conversion tasks on the same ofrenda, returning `HTTP 409 Conflict`.
+5. **No Memory Logging:** User transcripts, stories, and reference recordings are never written to server console logs.
+
+---
+
+## ⚖️ Open-Source Dependency & License Audit
+
+Offline Ofrenda Keeper's public commercial distribution uses **permissively licensed** components only:
+
+| Component | Repository / Source | License | Permitted for Commercial Use? |
+| :--- | :--- | :---: | :---: |
+| **Kokoro-82M** | `hexgrad/Kokoro-82M` | **Apache-2.0** | **YES** |
+| **OpenVoice V2** | `myshell-ai/OpenVoiceV2` | **MIT** | **YES** |
+| **faster-whisper** | `Systran/faster-whisper` | **MIT** | **YES** |
+| **PyTorch / Torchaudio**| `pytorch/pytorch` | **BSD-3-Clause** | **YES** |
+| **FastAPI / Uvicorn** | `tiangolo/fastapi` | **MIT / BSD** | **YES** |
+| **Application Code** | Offline Ofrenda Keeper | **MIT** | **YES** |
+
+> [!IMPORTANT]
+> **Non-Commercial Models Notice:**  
+> Previous experimental models governed by non-commercial restrictions—specifically **Coqui XTTS-v2** (CPML license) and **Facebook MMS-TTS** (CC-BY-NC 4.0 license)—are **NOT bundled, pre-warmed, or enabled by default** in this public distribution. All default synthesis and conversion rely exclusively on Kokoro-82M (Apache-2.0) and OpenVoice V2 (MIT).
+
+---
+
+## 🐳 Docker Deployment Notice
+
+> [!NOTE]
+> **Static Review Notice:**  
+> The `Dockerfile` and `docker-compose.yml` have received static code review and syntax linting only. Because the Docker CLI and daemon were not installed in this Windows execution environment, **no live container build or runtime test was performed**, and successful container execution cannot be claimed without testing on a Docker-enabled host.
+
+---
+
+## 🧪 Testing & Verification
+
+Run the full automated test suite:
+
+```powershell
+# Run the complete regression suite (all 69 tests pass)
+pytest -v
+
+# Run the pure-offline zero-network security scan
 python scripts/check_offline.py
 
-# Run real model integration tests (requires local Ollama & Whisper cache)
-pytest -v -m integration
+# Run the Phase 4 End-to-End verification script
+python scripts/test_phase4_complete_e2e.py
 ```
 
 ---
 
-## ❓ Frequently Asked Questions (FAQ)
+## 📚 Project Documentation
 
-**Q: Does any audio or picture ever get uploaded to the cloud?**  
-**A:** Never. `faster-whisper`, `llama3.2:3b`, and the local voice synthesis engine execute 100% directly on your local machine. You can disconnect your Wi-Fi or enable Airplane Mode, and the app continues to work without interruption.
-
-**Q: How does local voice recreation work and what are the ethical safeguards?**  
-**A:** In Step 4, families can optionally generate an audio remembrance using local models (XTTS-v2 or OpenVoice V2). To protect dignity and prevent deception, affirmative family authorization is strictly required, reference audio and speaker profiles remain strictly local, and all generated audio is explicitly labeled and watermarked as an AI-generated reading of remembrance (never implying the deceased uttered the words).
-
-**Q: How do judges or first-time users quickly test the app?**  
-**A:** Click the **✨ Demo (Abuela Rosa)** button in the top navigation bar. It instantly seeds an authentic, fictional ofrenda with photo, offerings, transcribed memories, AI remembrance, and voice recreation in 1 click!
-
-**Q: Can I control the 3D visual effects and animations?**  
-**A:** Yes. The top navigation bar includes an **Ambient 3D Toggle** (marigold petals and candle embers). Furthermore, all animations automatically detect and honor your operating system's `prefers-reduced-motion` settings.
-
-**Q: What happens if Ollama is not installed or running?**  
-**A:** The app gracefully detects that Ollama is offline and uses a gentle, respectful fallback template to compose the remembrance from the facts you provided. The app will never crash with a 500 error.
-
-**Q: How do I print the ofrenda or save it as a PDF?**  
-**A:** In Step 4, click **Print or Save as PDF**. The included `@media print` CSS ensures the background colors, altar candles, and portrait fit neatly on 1 to 2 printed pages.
+- **[Installation & Setup Guide](docs/INSTALLATION.md):** Complete Windows, Linux, and macOS setup and offline model caching.
+- **[System Architecture](docs/ARCHITECTURE.md):** Deep-dive into subsystems, data storage layout, and audio pipelines.
+- **[Privacy & Ethics Policy](docs/PRIVACY.md):** Transparent disclosures on zero-cloud operation, consent gating, storage, and watermarking limitations.
+- **[Architectural Decisions Log](docs/DECISIONS.md):** Evolution of technical decisions, trade-offs, and model selections.
+- **[Third-Party License Inventory](THIRD_PARTY_LICENSES.json):** Full machine-readable audit of all 193 dependencies and model weights.
+- **[Contributing Guidelines](CONTRIBUTING.md):** Hacktoberfest-friendly contribution guide, curated Good First Issues, and PR checklist.
+- **[Changelog](CHANGELOG.md):** Detailed release history.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are warmly welcomed! Please read [CONTRIBUTING.md](file:///CONTRIBUTING.md) for our contribution guidelines and a list of **Good First Issues** for Hacktoberfest.
+Contributions are warmly welcomed! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, development setup, and curated beginner-friendly issues for **Hacktoberfest 2026**.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](file:///LICENSE).
+This project is licensed under the [MIT License](LICENSE).

@@ -446,10 +446,10 @@
             <!-- Speech-to-Speech Interactive Microphone Studio -->
             <div class="s2s-studio-box">
               <div class="s2s-studio-title">
-                <span>🎙️</span> <span>Microphone Speech-to-Speech Conversion</span>
+                <span>🎙️</span> <span>Microphone Voice Recreation Studio (Whisper ASR → Kokoro TTS → OpenVoice)</span>
               </div>
               <p class="field-hint" style="margin-bottom:10px;">
-                Speak a message into your microphone. The system converts your spoken words into the vocal timbre of the uploaded reference voice.
+                Record your voice. Whisper transcribes your words, you can review and correct the transcript, Kokoro synthesizes natural speech, and OpenVoice transfers the reference vocal timbre.
               </p>
 
               <!-- Live Microphone Waveform Visualizer -->
@@ -470,15 +470,24 @@
                 </button>
               </div>
 
-              <!-- S2S Language Selection -->
-              <div class="form-group" style="margin-top:10px; max-width:280px;">
-                <label for="select-s2s-lang" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px; display:block;">Speech Language:</label>
-                <select id="select-s2s-lang" style="padding:6px 10px; font-size:0.88rem; width:100%; border-radius:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); color:var(--text-main);">
-                  <option value="" selected>Auto-Detect Language</option>
-                  <option value="hi">हिन्दी (Hindi - hi)</option>
-                  <option value="en">English (en)</option>
-                  <option value="es">Español (es)</option>
-                </select>
+              <!-- S2S Language and Engine Selection Row -->
+              <div class="form-row" style="margin-top:10px; gap:12px;">
+                <div class="form-group" style="flex:1; max-width:240px;">
+                  <label for="select-s2s-lang" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px; display:block;">Speech Language:</label>
+                  <select id="select-s2s-lang" style="padding:6px 10px; font-size:0.88rem; width:100%; border-radius:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); color:var(--text-main);">
+                    <option value="" selected>Auto-Detect Language</option>
+                    <option value="en">English (en)</option>
+                    <option value="hi">हिन्दी (Hindi - hi, Experimental)</option>
+                    <option value="es">Español (es)</option>
+                  </select>
+                </div>
+                <div class="form-group" style="flex:1; max-width:320px;">
+                  <label for="select-s2s-engine" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:4px; display:block;">Voice Engine:</label>
+                  <select id="select-s2s-engine" style="padding:6px 10px; font-size:0.88rem; width:100%; border-radius:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); color:var(--text-main);">
+                    <option value="kokoro-openvoice" selected>Kokoro + OpenVoice (Natural & Accurate)</option>
+                    <option value="seed-vc">Seed-VC (Direct Acoustic — English only)</option>
+                  </select>
+                </div>
               </div>
 
               <div id="s2s-mic-status" class="field-hint" style="margin-top:6px;"></div>
@@ -488,11 +497,88 @@
                 <span class="field-hint">Your Microphone Recording:</span>
                 <audio id="s2s-user-audio-player" controls style="width:100%; height:36px; margin-top:4px;"></audio>
               </div>
+
+              <!-- Editable Transcript Review Container -->
+              <div id="s2s-transcript-review-box" style="display:none; margin-top:14px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,154,39,0.35); border-radius:8px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <label for="s2s-transcript-input" style="font-size:0.9rem; font-weight:600; color:var(--candle-gold); display:flex; align-items:center; gap:6px;">
+                    <span>📝</span> <span>Review & Correct Spoken Words:</span>
+                  </label>
+                  <span id="s2s-transcribe-spinner" style="display:none; font-size:0.82rem; color:var(--candle-gold);">Transcribing with Whisper...</span>
+                </div>
+                <p class="field-hint" style="margin-bottom:8px; font-size:0.82rem; color:var(--text-muted);">
+                  Whisper transcribes your microphone recording locally. You can correct any misrecognized words before voice synthesis to ensure authentic pronunciation.
+                </p>
+                <textarea id="s2s-transcript-input" rows="3" style="width:100%; border-radius:6px; padding:8px 10px; background:rgba(10,5,15,0.7); border:1px solid rgba(255,255,255,0.2); color:#fff; font-size:0.92rem; resize:vertical; font-family:inherit;" placeholder="Spoken words will appear here for review..."></textarea>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                  <span id="s2s-transcript-hint" class="field-hint" style="font-size:0.8rem; color:var(--text-muted);">✓ Verified text will be synthesized in the loved one's vocal timbre.</span>
+                  <button type="button" id="btn-s2s-retranscribe" class="btn btn-secondary" style="font-size:0.78rem; padding:3px 10px; display:none;">Re-Transcribe</button>
+                </div>
+              </div>
+
+              <!-- Reference Voice Selection Box -->
+              <div id="s2s-ref-selector-box" style="margin-top:14px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,154,39,0.35); border-radius:8px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <label for="s2s-ref-file-input" style="font-size:0.9rem; font-weight:600; color:var(--candle-gold); display:flex; align-items:center; gap:6px;">
+                    <span>🔊</span> <span>Authorized Reference Voice of Deceased:</span>
+                  </label>
+                  <span id="s2s-ref-badge" class="voice-badge-tag" style="font-size:0.75rem;">Required for Conversion</span>
+                </div>
+                <p class="field-hint" style="margin-bottom:8px; font-size:0.82rem; color:var(--text-muted);">
+                  Select the authorized reference recording of the deceased (WAV, MP3, M4A, WebM) to transfer their unique vocal timbre.
+                </p>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <input type="file" id="s2s-ref-file-input" accept="audio/*" style="font-size:0.85rem; flex:1; min-width:220px;">
+                  <span id="s2s-ref-file-status" class="field-hint" style="color:var(--candle-gold);">No reference file selected</span>
+                </div>
+                <div id="s2s-ref-player-container" style="display:none; margin-top:8px;">
+                  <span class="field-hint" style="font-size:0.8rem; color:var(--candle-gold);">Reference Voice Preview:</span>
+                  <audio id="s2s-ref-preview-player" controls style="width:100%; height:32px; margin-top:4px;"></audio>
+                </div>
+              </div>
+
+              <!-- Conversion Progress Indicator -->
+              <div id="s2s-conversion-progress" style="display:none; margin-top:14px; padding:12px 14px; background:rgba(40,20,5,0.7); border:1px solid var(--candle-gold); border-radius:6px; color:var(--candle-gold); font-size:0.9rem;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid var(--candle-gold); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>
+                  <span id="s2s-conversion-progress-text">Starting neural voice conversion...</span>
+                </div>
+              </div>
+
+              <!-- Generated Audio Player & Download Studio Card -->
+              <div id="s2s-result-card" style="display:none; margin-top:16px; background:rgba(20,10,30,0.85); border:1px solid var(--candle-gold); border-radius:10px; padding:14px; box-shadow:0 0 15px rgba(255,154,39,0.2);">
+                <div class="voice-badge" style="margin-bottom:8px;">
+                  <span class="voice-badge-icon">⚠️</span>
+                  <span class="voice-badge-text">
+                    AI-Generated Memorial Recreation &bull; Simulation Only (Not spoken by deceased)
+                  </span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-size:0.95rem; font-weight:600; color:var(--candle-gold);">✨ Converted Memorial Voice:</span>
+                  <span id="s2s-result-engine-badge" class="voice-badge-tag">Kokoro + OpenVoice</span>
+                </div>
+                <audio id="s2s-result-audio-player" controls style="width:100%; margin:8px 0;"></audio>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+                  <button type="button" id="btn-s2s-download-voice" class="btn btn-secondary" style="font-size:0.85rem;">
+                    📥 Download Voice (.wav)
+                  </button>
+                  <button type="button" id="btn-s2s-replay-voice" class="btn btn-secondary" style="font-size:0.85rem;">
+                    ▶ Replay Audio
+                  </button>
+                  <span id="s2s-result-duration-info" class="field-hint" style="color:var(--text-muted); margin-left:auto;"></span>
+                </div>
+              </div>
+
+              <!-- Ethical AI-Generated Memorial Voice Disclaimer -->
+              <div style="margin-top:14px; padding:10px 14px; background:rgba(30,15,40,0.5); border-left:3px solid var(--candle-gold); border-radius:4px; font-size:0.82rem; color:var(--text-muted); line-height:1.4;">
+                <strong style="color:var(--candle-gold);">⚠️ AI-Generated Memorial Recreation:</strong>
+                This audio is an artificial vocal simulation created for remembrance only. It is not real speech uttered by the deceased and requires explicit family authorization.
+              </div>
             </div>
 
             <!-- Engine Transparency & Dependency Status Banner -->
             <div id="voice-engine-card-notice" class="voice-engine-card-notice" style="margin-top:16px;">
-              <div id="voice-engine-status-text"><strong>✓ Zero-Shot Speech-to-Speech Conversion Ready:</strong> Seed-VC engine active (Hindi & English). Microphone speech converts directly into target speaker timbre.</div>
+              <div id="voice-engine-status-text"><strong>✓ Neural Voice Conversion Active:</strong> Primary engine <code>Kokoro-82M + OpenVoice V2</code> is active (English & Experimental Hindi). Alternative engine <code>Seed-VC</code> is available for English.</div>
             </div>
 
             <!-- Voice Synthesis Settings & Trigger -->

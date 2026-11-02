@@ -1,0 +1,31 @@
+name: "Feature Request"
+description: "Suggest an idea or cultural enhancement for Offline Ofrenda Keeper."
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome feature ideas and cultural contributions! Please remember that all features must work 100% offline without remote network dependencies.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: "Is your feature request related to a problem or cultural need?"
+      placeholder: "e.g., I would like to support Nahuatl language prompt templates..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: "Describe how you envision this feature working."
+    validations:
+      required: true
+  - type: checkboxes
+    id: offline_compliance
+    attributes:
+      label: Offline Constraint
+      options:
+        - label: "I confirm this feature operates 100% locally with zero cloud API or external CDN calls."
+          required: true
+

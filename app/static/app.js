@@ -16,6 +16,8 @@ const state = {
   audioChunks: [],
   recordInterval: null,
   recordSeconds: 0,
+  selectedReferenceFile: null,
+  isConvertingVoice: false,
 };
 
 // Bilingual UI Text Dictionary
@@ -388,7 +390,7 @@ async function checkHealth() {
         elements.voiceEngineBadge.textContent = `✓ ${data.voice.active_engine || 'Seed-VC'} Ready`;
         elements.voiceEngineBadge.style.color = "var(--success)";
         if (noticeText) {
-          noticeText.innerHTML = `<strong>✓ Zero-Shot Speech-to-Speech Ready:</strong> Engine <code>${data.voice.active_engine}</code> is active. Microphone speech converts directly into target speaker timbre (Hindi & English).`;
+          noticeText.innerHTML = `<strong>✓ Voice Recreation Ready:</strong> Engine <code>${data.voice.active_engine}</code> is active (Whisper ASR → Kokoro TTS → OpenVoice Tone-Colour Conversion).`;
         }
       } else if (data.voice.status === "insufficient_ram") {
         elements.voiceEngineBadge.textContent = "Requires 2GB RAM";
@@ -400,7 +402,7 @@ async function checkHealth() {
         elements.voiceEngineBadge.textContent = "Model Setup Needed";
         elements.voiceEngineBadge.style.color = "var(--candle-gold)";
         if (noticeText) {
-          noticeText.innerHTML = `<strong>ℹ️ Neural Voice Recreation Model Not Installed:</strong> Genuine Speech-to-Speech voice conversion requires PyTorch and Coqui TTS. Install with: <code>pip install torch TTS</code>. In accordance with memorial integrity guidelines, synthetic sine wave beeps are disabled so you are never given artificial placeholders.`;
+          noticeText.innerHTML = `<strong>ℹ️ Neural Voice Recreation Model Not Installed:</strong> Voice recreation requires PyTorch, Kokoro, and OpenVoice V2. Install with: <code>pip install -r requirements.txt</code>.`;
         }
       }
     }
@@ -1019,6 +1021,7 @@ async function handleVoiceRefSelected(e) {
       body: formData,
     });
     await parseJsonResponse(res, "Failed to upload reference audio");
+    state.selectedReferenceFile = file;
     elements.voiceRefStatus.textContent = I18N[state.language].voiceRefStatusLoaded;
     elements.voiceRefStatus.style.color = "var(--success)";
 
@@ -1028,6 +1031,19 @@ async function handleVoiceRefSelected(e) {
     if (previewPlayer && previewContainer) {
       previewPlayer.src = URL.createObjectURL(file);
       previewContainer.style.display = "block";
+    }
+
+    // Synchronize S2S studio reference display
+    const s2sRefStatus = document.getElementById("s2s-ref-file-status");
+    const s2sRefPlayer = document.getElementById("s2s-ref-preview-player");
+    const s2sRefContainer = document.getElementById("s2s-ref-player-container");
+    if (s2sRefStatus) {
+      s2sRefStatus.textContent = `✓ Loaded: ${file.name}`;
+      s2sRefStatus.style.color = "var(--success)";
+    }
+    if (s2sRefPlayer && s2sRefContainer) {
+      s2sRefPlayer.src = URL.createObjectURL(file);
+      s2sRefContainer.style.display = "block";
     }
   } catch (err) {
     alert("Reference upload error: " + err.message);
@@ -1355,6 +1371,31 @@ function resetWizard() {
   elements.voiceResultBox.style.display = "none";
   elements.voiceAudioPlayer.src = "";
   elements.voiceDurationInfo.textContent = "";
+
+  // Reset S2S studio state
+  state.selectedReferenceFile = null;
+  state.isConvertingVoice = false;
+  s2sRecordedBlob = null;
+  const s2sRefInput = document.getElementById("s2s-ref-file-input");
+  if (s2sRefInput) s2sRefInput.value = "";
+  const s2sRefStatus = document.getElementById("s2s-ref-file-status");
+  if (s2sRefStatus) {
+    s2sRefStatus.textContent = "No reference file selected";
+    s2sRefStatus.style.color = "var(--candle-gold)";
+  }
+  const s2sRefContainer = document.getElementById("s2s-ref-player-container");
+  if (s2sRefContainer) s2sRefContainer.style.display = "none";
+  const s2sReviewBox = document.getElementById("s2s-transcript-review-box");
+  if (s2sReviewBox) s2sReviewBox.style.display = "none";
+  const s2sResultCard = document.getElementById("s2s-result-card");
+  if (s2sResultCard) s2sResultCard.style.display = "none";
+  const s2sProgress = document.getElementById("s2s-conversion-progress");
+  if (s2sProgress) s2sProgress.style.display = "none";
+  const s2sUserPreview = document.getElementById("s2s-user-preview-box");
+  if (s2sUserPreview) s2sUserPreview.style.display = "none";
+  const s2sMicStatus = document.getElementById("s2s-mic-status");
+  if (s2sMicStatus) s2sMicStatus.textContent = "";
+
   elements.previewIframe.src = "about:blank";
   const fanfare = document.getElementById("altar-fanfare-banner");
   if (fanfare) fanfare.style.display = "none";
@@ -1600,8 +1641,7 @@ function initEventListeners() {
             s2sUserAudioPlayer.src = URL.createObjectURL(s2sRecordedBlob);
             if (s2sUserPreviewBox) s2sUserPreviewBox.style.display = "block";
           }
-          if (btnS2SConvert) btnS2SConvert.style.display = "inline-flex";
-          if (s2sMicStatus) s2sMicStatus.textContent = "✓ Speech recorded. Click 'Convert Speech into Memorial Voice' below.";
+          triggerS2STranscription();
         };
 
         s2sMediaRecorder.start();
@@ -1636,11 +1676,140 @@ function initEventListeners() {
     });
   }
 
+  async function triggerS2STranscription() {
+    const reviewBox = document.getElementById("s2s-transcript-review-box");
+    const transcriptInput = document.getElementById("s2s-transcript-input");
+    const spinner = document.getElementById("s2s-transcribe-spinner");
+    const s2sMicStatus = document.getElementById("s2s-mic-status");
+    const btnS2SConvert = document.getElementById("btn-s2s-convert");
+    const btnRetranscribe = document.getElementById("btn-s2s-retranscribe");
+
+    if (!s2sRecordedBlob) return;
+
+    if (reviewBox) reviewBox.style.display = "block";
+    if (spinner) spinner.style.display = "inline";
+    if (s2sMicStatus) s2sMicStatus.textContent = "Transcribing your microphone speech locally with Whisper...";
+    if (btnS2SConvert) {
+      btnS2SConvert.style.display = "inline-flex";
+      btnS2SConvert.disabled = true;
+      btnS2SConvert.textContent = "Transcribing Words...";
+    }
+
+    if (!state.currentOfrendaId) {
+      if (s2sMicStatus) s2sMicStatus.textContent = "Please create or select an ofrenda first to transcribe speech.";
+      if (btnS2SConvert) {
+        btnS2SConvert.disabled = false;
+        btnS2SConvert.textContent = "✨ Convert Speech into Memorial Voice";
+      }
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", s2sRecordedBlob, "mic_speech.webm");
+    const s2sLangSelect = document.getElementById("select-s2s-lang");
+    if (s2sLangSelect && s2sLangSelect.value) {
+      formData.append("language", s2sLangSelect.value);
+    }
+
+    try {
+      const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/transcribe-mic`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await parseJsonResponse(res, "Microphone transcription failed");
+      if (transcriptInput) {
+        transcriptInput.value = data.transcript || "";
+      }
+      if (s2sMicStatus) {
+        if (data.transcript) {
+          s2sMicStatus.textContent = "✓ Speech transcribed. You can edit any words above before converting.";
+        } else {
+          s2sMicStatus.textContent = "⚠️ No speech detected. You can type your spoken words in the text box above.";
+        }
+      }
+      if (btnRetranscribe) btnRetranscribe.style.display = "inline-flex";
+    } catch (err) {
+      console.warn("Transcription notice:", err);
+      if (s2sMicStatus) {
+        s2sMicStatus.textContent = `Transcription notice: ${err.message}. You can manually type your message above.`;
+      }
+      if (btnRetranscribe) btnRetranscribe.style.display = "inline-flex";
+    } finally {
+      if (spinner) spinner.style.display = "none";
+      if (btnS2SConvert) {
+        btnS2SConvert.disabled = false;
+        btnS2SConvert.textContent = "✨ Convert Speech into Memorial Voice";
+      }
+    }
+  }
+
+  const btnRetranscribe = document.getElementById("btn-s2s-retranscribe");
+  if (btnRetranscribe) {
+    btnRetranscribe.addEventListener("click", () => {
+      triggerS2STranscription();
+    });
+  }
+
+  // S2S Studio Reference File Selection Listener
+  const s2sRefInput = document.getElementById("s2s-ref-file-input");
+  const s2sRefStatus = document.getElementById("s2s-ref-file-status");
+  const s2sRefPlayer = document.getElementById("s2s-ref-preview-player");
+  const s2sRefContainer = document.getElementById("s2s-ref-player-container");
+
+  if (s2sRefInput) {
+    s2sRefInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      state.selectedReferenceFile = file;
+      if (s2sRefStatus) {
+        s2sRefStatus.textContent = `✓ Selected: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+        s2sRefStatus.style.color = "var(--success)";
+      }
+      if (s2sRefPlayer && s2sRefContainer) {
+        s2sRefPlayer.src = URL.createObjectURL(file);
+        s2sRefContainer.style.display = "block";
+      }
+      if (elements.voiceRefStatus) {
+        elements.voiceRefStatus.textContent = `✓ Selected: ${file.name}`;
+        elements.voiceRefStatus.style.color = "var(--success)";
+      }
+    });
+  }
+
+  // S2S Result Card Replay & Download Buttons
+  const btnS2SDownload = document.getElementById("btn-s2s-download-voice");
+  if (btnS2SDownload) {
+    btnS2SDownload.addEventListener("click", () => {
+      if (!state.currentOfrendaId) return;
+      window.location.href = `/api/ofrendas/${state.currentOfrendaId}/voice/download`;
+    });
+  }
+
+  const btnS2SReplay = document.getElementById("btn-s2s-replay-voice");
+  if (btnS2SReplay) {
+    btnS2SReplay.addEventListener("click", () => {
+      const player = document.getElementById("s2s-result-audio-player");
+      if (player) {
+        player.currentTime = 0;
+        player.play().catch(() => {});
+      }
+    });
+  }
+
   if (btnS2SConvert) {
     btnS2SConvert.addEventListener("click", async () => {
-      if (!state.currentOfrendaId) {
-        alert("Please enter a name and start the ofrenda first.");
+      // Prevent duplicate conversion requests while one is running
+      if (state.isConvertingVoice) {
+        console.warn("A voice conversion request is already running.");
         return;
+      }
+
+      if (!state.currentOfrendaId) {
+        const ok = await saveStep1();
+        if (!ok || !state.currentOfrendaId) {
+          alert("Please enter a name for the ofrenda first.");
+          return;
+        }
       }
       if (!elements.checkVoiceConsent.checked) {
         alert("Affirmative family permission is strictly required for memorial voice recreation.");
@@ -1658,10 +1827,21 @@ function initEventListeners() {
         return;
       }
 
+      state.isConvertingVoice = true;
       btnS2SConvert.disabled = true;
       btnS2SConvert.textContent = "⏳ Converting Speech...";
+
+      const progressBar = document.getElementById("s2s-conversion-progress");
+      const progressText = document.getElementById("s2s-conversion-progress-text");
+      if (progressBar) progressBar.style.display = "block";
+      if (progressText) progressText.textContent = "Phase 1/2: Synthesizing natural base speech with Kokoro-82M...";
+
+      const stageTimer = setTimeout(() => {
+        if (progressText) progressText.textContent = "Phase 2/2: Transferring reference vocal timbre with OpenVoice V2...";
+      }, 7000);
+
       const loadingMsg = document.getElementById("voice-loading-message");
-      if (loadingMsg) loadingMsg.textContent = "Running zero-shot voice conversion into memorial voice...";
+      if (loadingMsg) loadingMsg.textContent = "Running neural voice conversion into memorial voice...";
       if (elements.voiceLoading) elements.voiceLoading.style.display = "block";
 
       const formData = new FormData();
@@ -1674,6 +1854,21 @@ function initEventListeners() {
         formData.append("language", s2sLangSelect.value);
       }
 
+      const transcriptInput = document.getElementById("s2s-transcript-input");
+      const reviewedText = transcriptInput ? transcriptInput.value.trim() : "";
+      if (reviewedText) {
+        formData.append("transcript", reviewedText);
+      }
+
+      const s2sEngineSelect = document.getElementById("select-s2s-engine");
+      if (s2sEngineSelect && s2sEngineSelect.value) {
+        formData.append("engine", s2sEngineSelect.value);
+      }
+
+      if (state.selectedReferenceFile) {
+        formData.append("reference_file", state.selectedReferenceFile);
+      }
+
       try {
         const res = await fetch(`/api/ofrendas/${state.currentOfrendaId}/voice/convert`, {
           method: "POST",
@@ -1683,28 +1878,50 @@ function initEventListeners() {
         const data = await parseJsonResponse(res, "Voice conversion failed");
 
         if (data.status === "unavailable") {
-          alert("Zero-Shot Voice Conversion Notice: " + data.message);
+          alert("Voice Conversion Notice: " + data.message);
           if (s2sMicStatus) s2sMicStatus.textContent = `Conversion setup notice: ${data.message}`;
         } else {
-          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted speech into memorial voice successfully (${(data.duration_s || 0).toFixed(1)}s)!`;
+          const expNote = data.experimental_hindi ? " (Experimental Hindi)" : "";
+          if (s2sMicStatus) s2sMicStatus.textContent = `✓ Converted speech into memorial voice successfully (${(data.duration_s || 0).toFixed(1)}s)!${expNote}`;
+
+          const audioUrl = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
+
+          // Update Studio Result Card
+          const s2sResultCard = document.getElementById("s2s-result-card");
+          const s2sResultPlayer = document.getElementById("s2s-result-audio-player");
+          const s2sEngineBadge = document.getElementById("s2s-result-engine-badge");
+          const s2sDurationInfo = document.getElementById("s2s-result-duration-info");
+
+          if (s2sResultCard) s2sResultCard.style.display = "block";
+          if (s2sResultPlayer) {
+            s2sResultPlayer.src = audioUrl;
+            s2sResultPlayer.play().catch(() => {});
+          }
+          if (s2sEngineBadge) s2sEngineBadge.textContent = `${data.engine_used || 'Kokoro + OpenVoice'}${expNote}`;
+          if (s2sDurationInfo) s2sDurationInfo.textContent = `Duration: ${(data.duration_s || 0).toFixed(1)}s`;
+
+          // Synchronize Top-Level Voice Result Box
           if (elements.voiceResultBox) elements.voiceResultBox.style.display = "block";
           if (elements.voiceAudioPlayer) {
-            elements.voiceAudioPlayer.src = `/api/ofrendas/${state.currentOfrendaId}/voice/audio?t=${Date.now()}`;
-            elements.voiceAudioPlayer.play().catch(() => {});
+            elements.voiceAudioPlayer.src = audioUrl;
           }
           if (elements.voiceDurationInfo && data.duration_s) {
-            elements.voiceDurationInfo.textContent = `Duration: ${data.duration_s.toFixed(1)}s • Engine: ${data.engine_used || 'Seed-VC'}`;
+            elements.voiceDurationInfo.textContent = `Duration: ${data.duration_s.toFixed(1)}s • Engine: ${data.engine_used || 'Kokoro + OpenVoice'}${expNote}`;
           }
-          if (elements.voiceResultBox) {
-            elements.voiceResultBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          if (s2sResultCard) {
+            s2sResultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
           }
           updatePreviewIframe();
         }
       } catch (err) {
         alert("Voice Conversion Notice: " + err.message);
+        if (s2sMicStatus) s2sMicStatus.textContent = `Error: ${err.message}`;
       } finally {
+        clearTimeout(stageTimer);
+        state.isConvertingVoice = false;
         btnS2SConvert.disabled = false;
         btnS2SConvert.textContent = "✨ Convert Speech into Memorial Voice";
+        if (progressBar) progressBar.style.display = "none";
         if (elements.voiceLoading) elements.voiceLoading.style.display = "none";
       }
     });

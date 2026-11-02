@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install CPU PyTorch and dependencies
+        run: |
+          pip install --upgrade pip
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Run pure-offline zero-network security check
+        run: python scripts/check_offline.py
+
+      - name: Verify host binding safeguards & license inventory
+        run: python scripts/test_host_binding_security.py
+
+      - name: Run automated test suite
+        run: pytest -v
+        env:
+          VOICE_ENGINE: mock
+          HF_HUB_OFFLINE: "1"
+

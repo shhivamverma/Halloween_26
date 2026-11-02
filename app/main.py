@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import threading
 from typing import List, Optional
 import uuid
 import zipfile
@@ -42,7 +43,7 @@ logger = logging.getLogger("ofrenda")
 
 
 def _prewarm_models_background():
-    """Warm up Whisper and default MMS-VITS models into memory during server boot."""
+    """Warm up Whisper model into memory during server boot."""
     try:
         from app.transcribe import get_whisper_model_instance
 
@@ -50,20 +51,6 @@ def _prewarm_models_background():
         logger.info("Background pre-warm: Whisper model loaded into memory.")
     except Exception as exc:
         logger.debug("Whisper background pre-warm skipped: %s", exc)
-
-    try:
-        from app.voice.mms_engine import MMSVitsEngine
-
-        engine = MMSVitsEngine()
-        if engine.is_available():
-            for lang in ("en", "hi", "es"):
-                try:
-                    engine._get_model_and_tokenizer(lang)
-                except Exception:
-                    pass
-            logger.info("Background pre-warm: MMS-VITS models loaded into memory.")
-    except Exception as exc:
-        logger.debug("MMS-VITS background pre-warm skipped: %s", exc)
 
 
 @asynccontextmanager
@@ -490,6 +477,69 @@ def synthesize_voice(id: uuid.UUID, request: VoiceSynthesisRequest):
         )
 
 
+@app.post("/api/ofrendas/{id}/voice/transcribe-mic")
+def transcribe_microphone_speech(
+    id: uuid.UUID,
+    file: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+):
+    """Transcribe user microphone recording for review before voice conversion.
+
+    Validates audio format and ofrenda access, executes faster-whisper locally on CPU,
+    and returns the extracted transcript and detected language for user confirmation/correction.
+    """
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ofrenda {id} not found.",
+        )
+
+    ext = Path(file.filename or "speech.wav").suffix.lower()
+    if ext not in (".wav", ".mp3", ".webm", ".ogg", ".m4a"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Unsupported audio format for microphone recording. Allowed: wav, mp3, webm, ogg, m4a.",
+        )
+
+    audio_bytes = file.file.read()
+    if len(audio_bytes) < 300:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Microphone recording is empty or corrupt. Please speak clearly into the microphone.",
+        )
+    if len(audio_bytes) > get_max_audio_mb() * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Microphone audio recording exceeds {get_max_audio_mb()}MB limit.",
+        )
+
+    voice_folder = storage.get_voice_folder(str(id))
+    temp_mic_path = voice_folder / f"temp_mic_{uuid.uuid4().hex[:8]}{ext}"
+    temp_mic_path.write_bytes(audio_bytes)
+
+    try:
+        lang_hint = language or record.language or "en"
+        result = transcribe_module.transcribe(temp_mic_path, language_hint=lang_hint)
+        return {
+            "status": "success",
+            "transcript": (result.get("text") or "").strip(),
+            "detected_language": result.get("language") or lang_hint,
+            "duration_s": result.get("duration", 0.0),
+        }
+    finally:
+        try:
+            if temp_mic_path.exists():
+                temp_mic_path.unlink()
+        except Exception as clean_err:
+            logger.debug("Could not clean up temp mic transcribe file: %s", clean_err)
+
+
+_active_conversions = set()
+_conversion_lock = threading.Lock()
+
+
 @app.post("/api/ofrendas/{id}/voice/convert")
 def convert_speech_to_speech(
     id: uuid.UUID,
@@ -497,13 +547,19 @@ def convert_speech_to_speech(
     authorized_by: str = Form(...),
     confirmed_permission: bool = Form(...),
     language: Optional[str] = Form(None),
+    transcript: Optional[str] = Form(None),
+    engine: Optional[str] = Form(None),
+    reference_file: Optional[UploadFile] = File(None),
 ):
-    """Zero-Shot Speech-to-Speech voice conversion pipeline.
+    """Zero-Shot Voice Conversion pipeline.
 
-    Accepts user microphone audio and converts speech into the target reference speaker's voice
-    using Seed-VC zero-shot audio-to-audio conversion. Preserves the user's spoken words,
-    phrasing, and natural cadence while cloning the target speaker's vocal characteristics.
-    Supports Hindi (hi) and English (en).
+    Converts user microphone speech into the target reference speaker's vocal characteristics.
+    Supports:
+    - Primary: Kokoro-82M (Natural Base Speech) + OpenVoice V2 (Timbre Transfer)
+    - Alternative: Seed-VC (Direct Acoustic Flow Matching, English only)
+    Accepts pre-reviewed/corrected transcript text to eliminate ASR phonetic errors.
+    Optionally accepts a newly attached reference voice file in the same request.
+    Prevents duplicate conversion requests on the same ofrenda.
     """
     if not confirmed_permission:
         raise HTTPException(
@@ -515,6 +571,11 @@ def convert_speech_to_speech(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The authorizing family member name must be provided.",
         )
+
+    storage = get_storage()
+    record = storage.get(str(id))
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ofrenda not found")
 
     ext = Path(file.filename or "speech.wav").suffix.lower()
     if ext not in (".wav", ".mp3", ".webm", ".ogg", ".m4a"):
@@ -530,13 +591,52 @@ def convert_speech_to_speech(
             detail=f"Microphone audio recording exceeds {get_max_audio_mb()}MB limit.",
         )
 
-    storage = get_storage()
     consent = VoiceConsentRecord(
         authorized_by=authorized_by.strip(),
         confirmed_permission=True,
     )
-
     voice_service = get_voice_service()
+
+    # If reference_file is provided, validate and save it for this ofrenda
+    if reference_file is not None and reference_file.filename:
+        ref_ext = Path(reference_file.filename).suffix.lower().lstrip(".")
+        if ref_ext not in ("wav", "mp3", "webm", "ogg", "m4a"):
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="Unsupported audio format for reference voice. Allowed: wav, mp3, webm, ogg, m4a.",
+            )
+        ref_bytes = reference_file.file.read()
+        if len(ref_bytes) > get_max_audio_mb() * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Reference audio exceeds maximum size of {get_max_audio_mb()} MB",
+            )
+        if len(ref_bytes) >= 300:
+            voice_service.process_and_save_reference(
+                ofrenda_id=str(id),
+                audio_bytes=ref_bytes,
+                ext=ref_ext,
+                consent=consent,
+                storage=storage,
+            )
+
+    # Verify reference audio is present
+    ref_path = storage.get_reference_audio_path(str(id))
+    if not ref_path or not ref_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No reference voice audio found. Please upload or select a family-authorized reference recording first.",
+        )
+
+    # Prevent concurrent duplicate conversions on the same ofrenda
+    with _conversion_lock:
+        if str(id) in _active_conversions:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A voice conversion is already in progress for this ofrenda. Please wait for it to complete.",
+            )
+        _active_conversions.add(str(id))
+
     try:
         result = voice_service.convert_speech_to_speech(
             ofrenda_id=str(id),
@@ -545,6 +645,8 @@ def convert_speech_to_speech(
             consent=consent,
             storage=storage,
             target_language=language,
+            transcript=transcript,
+            engine_name=engine,
         )
         return result
     except KeyError:
@@ -560,6 +662,9 @@ def convert_speech_to_speech(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Voice conversion error: {str(exc) or 'Internal error during speech conversion.'}",
         )
+    finally:
+        with _conversion_lock:
+            _active_conversions.discard(str(id))
 
 
 @app.get("/api/ofrendas/{id}/voice/audio")
@@ -712,3 +817,22 @@ def export_ofrenda_zip(id: uuid.UUID):
 static_dir = Path(__file__).resolve().parent / "static"
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    from app.config import get_server_host, get_server_port
+
+    host = get_server_host()
+    port = get_server_port()
+    if host == "0.0.0.0":
+        print("!" * 70)
+        print("[SECURITY WARNING] LAN MODE ENABLED (0.0.0.0)")
+        print("The application has NO BUILT-IN AUTHENTICATION. Anyone on the local")
+        print("Wi-Fi network can view, edit, download, and delete memorials.")
+        print("Do NOT run in LAN mode on public, untrusted, or shared networks.")
+        print("!" * 70)
+    else:
+        print(f"[SECURE DEFAULT] Server listening on loopback {host}:{port}")
+
+    uvicorn.run("app.main:app", host=host, port=port, workers=1)
